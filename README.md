@@ -1,5 +1,5 @@
 # rPop
-Rust game plug-in 
+Umod plug-in for the game Rust that tracks Server Performance/Population
 
 # Status
 Testing and improvement.
@@ -13,13 +13,7 @@ After plug-in has been loaded, you can find new configuration file here:
 `\Rust\oxide\config\rPop.json`
 
 ## Configuration
-.
 
-[Read more](rPop.md) about configuration file.
-
-.
-
-[Read more](Commands.md).
 
 # Console commands
 - `rpop.help` - list of available console commands
