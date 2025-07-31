@@ -9,7 +9,7 @@ using Newtonsoft.Json;
 
 namespace Oxide.Plugins
 {
-    [Info("rPop", "Ftuoil Xelrash", "0.0.12")]
+    [Info("rPop", "Ftuoil Xelrash", "0.0.120")]
     [Description("Displays server population statistics and sends performance updates to Discord")]
 
     public class rPop : RustPlugin
@@ -20,7 +20,10 @@ namespace Oxide.Plugins
         private PluginData pluginData;
         private DateTime lastPopCommandTime = DateTime.MinValue;
         private Timer performanceTimer;
+        private Timer inGameMessageTimer;
         private readonly Dictionary<string, DateTime> lastDiscordMessage = new Dictionary<string, DateTime>();
+        private SaveInfo _saveInfo;
+        private bool _isOnline = false;  // Server status tracking
 
         public class ConfigData
         {
@@ -32,6 +35,10 @@ namespace Oxide.Plugins
             [JsonProperty("Enable !pop Command")] public bool EnablePopCommand = true;
             [JsonProperty("Command Cooldown (minutes)")] public float CommandCooldown = 5f;
             [JsonProperty("Show Last Wipe Date")] public bool ShowLastWipeDate = true;
+            [JsonProperty("Show Last Blueprint Wipe Date")] public bool ShowLastBlueprintWipeDate = true;
+            [JsonProperty("Show Network IO")] public bool ShowNetworkIO = true;
+            [JsonProperty("Show Protocol")] public bool ShowProtocol = true;
+            [JsonProperty("Show Server Status")] public bool ShowServerStatus = true;
             
             [JsonProperty("Show Players Joining")] public bool ShowPlayersJoining = true;
             [JsonProperty("Show Players Sleeping")] public bool ShowPlayersSleeping = true;
@@ -41,21 +48,32 @@ namespace Oxide.Plugins
             [JsonProperty("Discord Webhook URL")] public string WebhookURL = "";
             [JsonProperty("Discord Rate Limit (seconds)")] public float DiscordRateLimit = 1f;
             [JsonProperty("Enable Discord Performance Messages")] public bool EnablePerformanceMessages = true;
-            [JsonProperty("Performance Message Interval (minutes)")] public float PerformanceMessageInterval = 60f;
+            [JsonProperty("Performance Message Interval (minutes)")] public float PerformanceMessageInterval = 3f;
             [JsonProperty("Enable In-Game Performance Messages")] public bool EnableInGamePerformanceMessages = true;
+            [JsonProperty("In-Game Message Interval (minutes)")] public float InGameMessageInterval = 60f;
             
             [JsonProperty("Use Server Header Image")] public bool UseServerHeaderImage = true;
             [JsonProperty("Fallback Discord Image URL")] public string FallbackImageURL = "https://files.facepunch.com/lewis/1b2911b1/rust-logo.png";
             [JsonProperty("Use Thumbnail Instead of Image")] public bool UseThumbnail = true;
+            [JsonProperty("Show Discord Image")] public bool ShowDiscordImage = true;
+            [JsonProperty("Discord Bot Name")] public string DiscordBotName = "Live Server Statistics";
             
             [JsonProperty("Show Population Records")] public bool ShowPopulationRecords = true;
+            [JsonProperty("Show Total Players Ever")] public bool ShowTotalPlayersEver = true;
+            [JsonProperty("Show Average Connection Time")] public bool ShowAverageConnectionTime = true;
+            
+            [JsonProperty("Enable Instant Population Updates")] public bool EnableInstantPopulationUpdates = true;
+            [JsonProperty("Population Update Delay (seconds)")] public float PopulationUpdateDelay = 2f;
         }
 
         public class PluginData
         {
             [JsonProperty("Today High Population")] public PopulationRecord TodayHigh = new PopulationRecord();
+            [JsonProperty("Monthly High Population")] public PopulationRecord MonthlyHigh = new PopulationRecord();
             [JsonProperty("All Time High Population")] public PopulationRecord AllTimeHigh = new PopulationRecord();
             [JsonProperty("Last Reset Date")] public DateTime LastResetDate = DateTime.Today;
+            [JsonProperty("Last Monthly Reset")] public DateTime LastMonthlyReset = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
+            [JsonProperty("Discord Status Message ID")] public string StatusMessageId = null;
         }
 
         public class PopulationRecord
@@ -95,11 +113,10 @@ namespace Oxide.Plugins
         {
             bool needsSave = false;
 
-            // Only fix values that are clearly invalid, don't reset user preferences
-            if (config.Settings.PerformanceMessageInterval < 5f)
+            if (config.Settings.PerformanceMessageInterval < 1f)
             {
-                Puts($"Performance message interval ({config.Settings.PerformanceMessageInterval}) is too low, setting to minimum of 5 minutes.");
-                config.Settings.PerformanceMessageInterval = 5f;
+                Puts($"Performance message interval ({config.Settings.PerformanceMessageInterval}) is too low, setting to minimum of 1 minute.");
+                config.Settings.PerformanceMessageInterval = 1f;
                 needsSave = true;
             }
 
@@ -110,7 +127,13 @@ namespace Oxide.Plugins
                 needsSave = true;
             }
 
-            // Check if we need to add missing properties without overwriting existing ones
+            if (config.Settings.PopulationUpdateDelay < 1f)
+            {
+                Puts($"Population update delay ({config.Settings.PopulationUpdateDelay}) is too low, setting to minimum of 1 second.");
+                config.Settings.PopulationUpdateDelay = 1f;
+                needsSave = true;
+            }
+
             if (!ConfigHasAllProperties())
             {
                 Puts("Adding missing configuration properties...");
@@ -128,30 +151,38 @@ namespace Oxide.Plugins
         {
             try
             {
-                // Read the raw config file and check if it contains all required properties
                 var configText = Config.ReadObject<Dictionary<string, object>>();
                 var settings = configText.GetValueOrDefault("Settings") as Dictionary<string, object>;
                 
                 if (settings == null) return false;
 
-                // Check for all properties including new ones
                 bool hasAll = settings.ContainsKey("Discord Webhook URL") &&
                        settings.ContainsKey("Discord Rate Limit (seconds)") &&
                        settings.ContainsKey("Enable Discord Performance Messages") &&
                        settings.ContainsKey("Performance Message Interval (minutes)") &&
                        settings.ContainsKey("Enable In-Game Performance Messages") &&
+                       settings.ContainsKey("In-Game Message Interval (minutes)") &&
                        settings.ContainsKey("Use Server Header Image") &&
                        settings.ContainsKey("Fallback Discord Image URL") &&
                        settings.ContainsKey("Use Thumbnail Instead of Image") &&
+                       settings.ContainsKey("Show Discord Image") &&
+                       settings.ContainsKey("Discord Bot Name") &&
                        settings.ContainsKey("Show Players Joining") &&
                        settings.ContainsKey("Show Players Sleeping") &&
                        settings.ContainsKey("Show Admins Online") &&
                        settings.ContainsKey("Hide Zero Values") &&
-                       settings.ContainsKey("Show Population Records");
+                       settings.ContainsKey("Show Population Records") &&
+                       settings.ContainsKey("Show Total Players Ever") &&
+                       settings.ContainsKey("Show Average Connection Time") &&
+                       settings.ContainsKey("Show Last Blueprint Wipe Date") &&
+                       settings.ContainsKey("Show Network IO") &&
+                       settings.ContainsKey("Show Protocol") &&
+                       settings.ContainsKey("Show Server Status") &&
+                       settings.ContainsKey("Enable Instant Population Updates") &&
+                       settings.ContainsKey("Population Update Delay (seconds)");
 
                 if (!hasAll)
                 {
-                    // Add missing properties with defaults, but preserve existing values
                     if (!settings.ContainsKey("Discord Webhook URL"))
                         config.Settings.WebhookURL = "";
                     if (!settings.ContainsKey("Discord Rate Limit (seconds)"))
@@ -159,15 +190,21 @@ namespace Oxide.Plugins
                     if (!settings.ContainsKey("Enable Discord Performance Messages"))
                         config.Settings.EnablePerformanceMessages = true;
                     if (!settings.ContainsKey("Performance Message Interval (minutes)"))
-                        config.Settings.PerformanceMessageInterval = 60f;
+                        config.Settings.PerformanceMessageInterval = 3f;
                     if (!settings.ContainsKey("Enable In-Game Performance Messages"))
                         config.Settings.EnableInGamePerformanceMessages = true;
+                    if (!settings.ContainsKey("In-Game Message Interval (minutes)"))
+                        config.Settings.InGameMessageInterval = 60f;
                     if (!settings.ContainsKey("Use Server Header Image"))
                         config.Settings.UseServerHeaderImage = true;
                     if (!settings.ContainsKey("Fallback Discord Image URL"))
                         config.Settings.FallbackImageURL = "https://files.facepunch.com/lewis/1b2911b1/rust-logo.png";
                     if (!settings.ContainsKey("Use Thumbnail Instead of Image"))
                         config.Settings.UseThumbnail = true;
+                    if (!settings.ContainsKey("Show Discord Image"))
+                        config.Settings.ShowDiscordImage = true;
+                    if (!settings.ContainsKey("Discord Bot Name"))
+                        config.Settings.DiscordBotName = "Live Server Statistics";
                     if (!settings.ContainsKey("Show Players Joining"))
                         config.Settings.ShowPlayersJoining = true;
                     if (!settings.ContainsKey("Show Players Sleeping"))
@@ -178,6 +215,22 @@ namespace Oxide.Plugins
                         config.Settings.HideZeroValues = true;
                     if (!settings.ContainsKey("Show Population Records"))
                         config.Settings.ShowPopulationRecords = true;
+                    if (!settings.ContainsKey("Show Total Players Ever"))
+                        config.Settings.ShowTotalPlayersEver = true;
+                    if (!settings.ContainsKey("Show Average Connection Time"))
+                        config.Settings.ShowAverageConnectionTime = true;
+                    if (!settings.ContainsKey("Show Last Blueprint Wipe Date"))
+                        config.Settings.ShowLastBlueprintWipeDate = true;
+                    if (!settings.ContainsKey("Show Network IO"))
+                        config.Settings.ShowNetworkIO = true;
+                    if (!settings.ContainsKey("Show Protocol"))
+                        config.Settings.ShowProtocol = true;
+                    if (!settings.ContainsKey("Show Server Status"))
+                        config.Settings.ShowServerStatus = true;
+                    if (!settings.ContainsKey("Enable Instant Population Updates"))
+                        config.Settings.EnableInstantPopulationUpdates = true;
+                    if (!settings.ContainsKey("Population Update Delay (seconds)"))
+                        config.Settings.PopulationUpdateDelay = 2f;
                 }
 
                 return hasAll;
@@ -215,7 +268,7 @@ namespace Oxide.Plugins
                     SaveData();
                 }
                 
-                // Reset daily stats if it's a new day
+                // Check for daily reset
                 if (pluginData.LastResetDate.Date < DateTime.Today)
                 {
                     pluginData.TodayHigh = new PopulationRecord();
@@ -223,6 +276,18 @@ namespace Oxide.Plugins
                     SaveData();
                     Puts("Daily population stats reset for new day.");
                 }
+
+                // Check for monthly reset
+                DateTime currentMonthStart = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
+                if (pluginData.LastMonthlyReset < currentMonthStart)
+                {
+                    pluginData.MonthlyHigh = new PopulationRecord();
+                    pluginData.LastMonthlyReset = currentMonthStart;
+                    SaveData();
+                    Puts("Monthly population stats reset for new month.");
+                }
+
+                Puts("Plugin data loaded successfully.");
             }
             catch (Exception ex)
             {
@@ -251,14 +316,18 @@ namespace Oxide.Plugins
                 int currentPopulation = BasePlayer.activePlayerList.Count;
                 DateTime now = DateTime.Now;
                 
-                // Update today's high
                 if (currentPopulation > pluginData.TodayHigh.Count)
                 {
                     pluginData.TodayHigh.Count = currentPopulation;
                     pluginData.TodayHigh.Date = now;
                 }
                 
-                // Update all-time high
+                if (currentPopulation > pluginData.MonthlyHigh.Count)
+                {
+                    pluginData.MonthlyHigh.Count = currentPopulation;
+                    pluginData.MonthlyHigh.Date = now;
+                }
+                
                 if (currentPopulation > pluginData.AllTimeHigh.Count)
                 {
                     pluginData.AllTimeHigh.Count = currentPopulation;
@@ -273,6 +342,250 @@ namespace Oxide.Plugins
             }
         }
 
+        private double GetSessionPlayTime(BasePlayer player)
+        {
+            if (player?.net?.connection == null) return 0;
+            return player.net.connection.GetSecondsConnected();
+        }
+
+        private string GetAverageConnectionTime()
+        {
+            try
+            {
+                var activePlayers = BasePlayer.activePlayerList;
+                if (activePlayers.Count == 0) return "No players online";
+
+                double totalSeconds = 0;
+                int validPlayerCount = 0;
+
+                foreach (var player in activePlayers)
+                {
+                    if (player?.net?.connection == null) continue;
+
+                    double sessionTime = player.net.connection.GetSecondsConnected();
+                    if (sessionTime > 0)
+                    {
+                        totalSeconds += sessionTime;
+                        validPlayerCount++;
+                    }
+                }
+
+                if (validPlayerCount == 0) return "No valid session data";
+
+                double averageSeconds = totalSeconds / validPlayerCount;
+                TimeSpan timeSpan = TimeSpan.FromSeconds(averageSeconds);
+                
+                if (timeSpan.TotalHours >= 1)
+                    return $"{(int)timeSpan.TotalHours:D2}:{timeSpan.Minutes:D2}:{timeSpan.Seconds:D2}";
+                else if (timeSpan.TotalMinutes >= 1)
+                    return $"{timeSpan.Minutes}:{timeSpan.Seconds:D2} min";
+                else
+                    return $"{timeSpan.Seconds} sec";
+            }
+            catch (Exception ex)
+            {
+                PrintError($"Error calculating average connection time: {ex.Message}");
+                return "Error calculating";
+            }
+        }
+
+        private int GetTotalPlayersEver()
+        {
+            try
+            {
+                string userdataPath = "userdata";
+                
+                if (!Directory.Exists(userdataPath))
+                {
+                    return 0;
+                }
+
+                var playerFolders = Directory.GetDirectories(userdataPath);
+                int validPlayerCount = 0;
+
+                foreach (string playerFolder in playerFolders)
+                {
+                    string steamId = Path.GetFileName(playerFolder);
+                    if (IsValidSteamID(steamId))
+                    {
+                        validPlayerCount++;
+                    }
+                }
+
+                return validPlayerCount;
+            }
+            catch (Exception ex)
+            {
+                PrintError($"Error counting total players: {ex.Message}");
+                return 0;
+            }
+        }
+
+        private bool IsValidSteamID(string steamId)
+        {
+            return !string.IsNullOrEmpty(steamId) && 
+                   steamId.Length >= 7 && 
+                   steamId.All(char.IsDigit);
+        }
+
+        #endregion
+
+        #region Server Status Functions
+
+        private string GetServerStatus()
+        {
+            return _isOnline ? "✅ Online" : "❌ Offline";
+        }
+
+        private string GetServerStatusEmoji()
+        {
+            return _isOnline ? "✅" : "❌";
+        }
+
+        private string GetServerStatusText()
+        {
+            return _isOnline ? "Online" : "Offline";
+        }
+
+        #endregion
+
+        #region Network, Blueprint, and Protocol Functions
+
+        private string GetNetworkIO()
+        {
+            try
+            {
+                float networkIn = Network.Net.sv.GetStat(null, Network.BaseNetwork.StatTypeLong.BytesReceived_LastSecond) / 1024f;
+                float networkOut = Network.Net.sv.GetStat(null, Network.BaseNetwork.StatTypeLong.BytesSent_LastSecond) / 1024f;
+                
+                return $"In: {networkIn:0.00} KB/s Out: {networkOut:0.00} KB/s";
+            }
+            catch (Exception ex)
+            {
+                PrintError($"Error getting network IO: {ex.Message}");
+                return "Network IO: Error";
+            }
+        }
+
+        private string GetServerProtocol()
+        {
+            try
+            {
+                // Get the protocol string the same way DiscordServerStats does it
+                // Looking at PlaceholderAPI, they use server.Protocol which should give us the full version
+                // Since we can't access server.Protocol directly, let's build it correctly
+                return $"{Rust.Protocol.network}.{Rust.Protocol.save}.{Rust.Protocol.report}";
+            }
+            catch (Exception ex)
+            {
+                PrintError($"Error getting server protocol: {ex.Message}");
+                return "Unknown";
+            }
+        }
+
+        private DateTime GetLastBlueprintWipe()
+        {
+            try
+            {
+                if (_saveInfo == null)
+                {
+                    string saveInfoPath = Path.Combine(World.SaveFolderName, $"player.blueprints.{Rust.Protocol.persistance}.db");
+                    _saveInfo = SaveInfo.Create(saveInfoPath);
+                }
+                
+                return _saveInfo?.CreationTime ?? DateTime.MinValue;
+            }
+            catch (Exception ex)
+            {
+                PrintError($"Error getting last blueprint wipe: {ex.Message}");
+                return DateTime.MinValue;
+            }
+        }
+
+        private string GetFormattedBlueprintWipeDate()
+        {
+            try
+            {
+                DateTime blueprintWipe = GetLastBlueprintWipe();
+                
+                if (blueprintWipe == DateTime.MinValue)
+                {
+                    return "Unknown";
+                }
+                
+                TimeSpan timeSinceWipe = DateTime.Now - blueprintWipe;
+                
+                if (timeSinceWipe.TotalDays < 1)
+                {
+                    return $"{blueprintWipe:MMM dd, yyyy} ({(int)timeSinceWipe.TotalHours}h ago)";
+                }
+                else if (timeSinceWipe.TotalDays < 7)
+                {
+                    return $"{blueprintWipe:MMM dd, yyyy} ({(int)timeSinceWipe.TotalDays}d ago)";
+                }
+                else
+                {
+                    return $"{blueprintWipe:MMM dd, yyyy} ({(int)timeSinceWipe.TotalDays}d ago)";
+                }
+            }
+            catch (Exception ex)
+            {
+                PrintError($"Error formatting blueprint wipe date: {ex.Message}");
+                return "Unknown";
+            }
+        }
+
+        #endregion
+
+        #region Population Update Timer Management
+
+        private void ResetPerformanceTimer()
+        {
+            try
+            {
+                // Destroy existing timer
+                performanceTimer?.Destroy();
+                
+                // Create new timer with full interval
+                if (config.Settings.EnablePerformanceMessages)
+                {
+                    performanceTimer = timer.Every(config.Settings.PerformanceMessageInterval * 60f, SendPerformanceMessage);
+                    Puts($"Performance timer reset - next update in {config.Settings.PerformanceMessageInterval} minutes");
+                }
+            }
+            catch (Exception ex)
+            {
+                PrintError($"Error resetting performance timer: {ex.Message}");
+            }
+        }
+
+        private void TriggerInstantPopulationUpdate()
+        {
+            try
+            {
+                if (!config.Settings.EnableInstantPopulationUpdates || 
+                    !config.Settings.EnablePerformanceMessages || 
+                    string.IsNullOrEmpty(config.Settings.WebhookURL))
+                {
+                    return;
+                }
+
+                // Send immediate Discord update
+                timer.Once(config.Settings.PopulationUpdateDelay, () =>
+                {
+                    SendPerformanceMessage();
+                    // Reset the regular timer after sending instant update
+                    ResetPerformanceTimer();
+                });
+                
+                Puts($"Instant population update triggered - Discord will update in {config.Settings.PopulationUpdateDelay} seconds");
+            }
+            catch (Exception ex)
+            {
+                PrintError($"Error triggering instant population update: {ex.Message}");
+            }
+        }
+
         #endregion
 
         #region Hooks
@@ -281,12 +594,37 @@ namespace Oxide.Plugins
         {
             try
             {
+                _isOnline = true;  // Mark server as online
+                Puts("Server marked as ONLINE");
+                
                 LoadData();
                 
-                if (config.Settings.EnablePerformanceMessages)
-                    performanceTimer = timer.Every(config.Settings.PerformanceMessageInterval * 60f, SendPerformanceMessage);
+                // Initialize save info for blueprint tracking
+                try
+                {
+                    string saveInfoPath = Path.Combine(World.SaveFolderName, $"player.blueprints.{Rust.Protocol.persistance}.db");
+                    _saveInfo = SaveInfo.Create(saveInfoPath);
+                }
+                catch (Exception ex)
+                {
+                    PrintError($"Error initializing blueprint save info: {ex.Message}");
+                }
                 
-                // Update population records on server start
+                if (config.Settings.EnablePerformanceMessages)
+                {
+                    performanceTimer = timer.Every(config.Settings.PerformanceMessageInterval * 60f, SendPerformanceMessage);
+                    
+                    // Send initial Discord message after a short delay
+                    timer.Once(10f, SendPerformanceMessage);
+                }
+
+                if (config.Settings.EnableInGamePerformanceMessages)
+                {
+                    inGameMessageTimer = timer.Every(config.Settings.InGameMessageInterval * 60f, SendInGamePerformanceMessageOnly);
+                    
+                    // Don't send initial in-game message on plugin load
+                }
+                
                 UpdatePopulationRecords();
             }
             catch (Exception ex)
@@ -295,22 +633,48 @@ namespace Oxide.Plugins
             }
         }
 
+        private void OnServerShutdown()
+        {
+            try
+            {
+                _isOnline = false;  // Mark server as offline
+                Puts("Server marked as OFFLINE - sending final Discord update");
+                
+                // Send immediate final update to Discord showing offline status
+                if (config.Settings.EnablePerformanceMessages && !string.IsNullOrEmpty(config.Settings.WebhookURL))
+                {
+                    SendPerformanceMessage();
+                }
+            }
+            catch (Exception ex)
+            {
+                PrintError($"Error during shutdown: {ex.Message}");
+            }
+        }
+
         private void Unload()
         {
             performanceTimer?.Destroy();
+            inGameMessageTimer?.Destroy();
             SaveData();
         }
 
         private void OnPlayerConnected(BasePlayer player)
         {
-            // Update population records when a player connects
-            timer.Once(1f, () => UpdatePopulationRecords());
+            timer.Once(1f, () => 
+            {
+                UpdatePopulationRecords();
+                TriggerInstantPopulationUpdate();
+            });
         }
 
         private void OnPlayerDisconnected(BasePlayer player, string reason)
         {
-            // Update population records when a player disconnects (with slight delay)
-            timer.Once(2f, () => UpdatePopulationRecords());
+            timer.Once(2f, () => 
+            {
+                UpdatePopulationRecords();
+                TriggerInstantPopulationUpdate();
+            });
         }
 
         private void OnPlayerChat(BasePlayer player, string message, ConVar.Chat.ChatChannel channel)
@@ -352,7 +716,7 @@ namespace Oxide.Plugins
             int adminCount = BasePlayer.activePlayerList.Count(p => p.IsAdmin);
             string uptime = GetHumanReadableUptime();
 
-            string statsMessage = $"<color=#FFD700><size=14>LIVE SERVER STATISTICS</size></color>\n" +
+            string statsMessage = $"<color=#FFD700><size=14>Population Stats:</size></color>\n" +
                                 $"<color=#00FF00>Players Online:</color> <color=#FFFFFF>{playerCount}/{maxPlayers}</color>";
 
             if (config.Settings.ShowPlayersJoining && (!config.Settings.HideZeroValues || joiningPlayers > 0))
@@ -363,14 +727,6 @@ namespace Oxide.Plugins
 
             if (config.Settings.ShowAdminsOnline && (!config.Settings.HideZeroValues || adminCount > 0))
                 statsMessage += $"\n<color=#FFB6C1>Admins Online:</color> <color=#FFFFFF>{adminCount}</color>";
-
-            statsMessage += $"\n<color=#20B2AA>Server Online For:</color> <color=#FFFFFF>{uptime}</color>";
-
-            if (config.Settings.ShowLastWipeDate)
-            {
-                string lastWipeDate = GetLastWipeDate();
-                statsMessage += $"\n<color=#87CEEB>Last Wipe Date:</color> <color=#FFFFFF>{lastWipeDate}</color>";
-            }
 
             foreach (var onlinePlayer in BasePlayer.activePlayerList)
                 onlinePlayer?.ChatMessage(statsMessage);
@@ -395,11 +751,25 @@ namespace Oxide.Plugins
                 int mapEntities = BaseNetworkable.serverEntities.Count;
                 string uptime = GetHumanReadableUptime();
                 string lastWipeDate = GetLastWipeDate();
+                int totalPlayersEver = GetTotalPlayersEver();
+                string averageConnectionTime = GetAverageConnectionTime();
+                string networkIO = GetNetworkIO();
+                string lastBpWipeDate = GetFormattedBlueprintWipeDate();
 
-                string message = $"🟢 **Players Online:** `{playerCount}/{maxPlayers}`";
+                string message = "";
+
+                // Add server status at the very top with spacing
+                if (config.Settings.ShowServerStatus)
+                {
+                    message += $"{GetServerStatusEmoji()} **Server Status:** `{GetServerStatusText()}`\n\n";
+                }
+
+                // Population Data section header
+                message += $"`📊 Population Data`\n";
+                message += $"🟢 **Players Online:** `{playerCount}/{maxPlayers}`";
 
                 if (config.Settings.ShowPlayersJoining && (!config.Settings.HideZeroValues || joiningPlayers > 0))
-                    message += $"\n🟡 **Players Joining:** `{joiningPlayers}`";
+                    message += $"\n🟡 **Players In Queue:** `{joiningPlayers}`";
 
                 if (config.Settings.ShowPlayersSleeping && (!config.Settings.HideZeroValues || sleepingPlayers > 0))
                     message += $"\n🔴 **Players Sleeping:** `{sleepingPlayers}`";
@@ -407,26 +777,51 @@ namespace Oxide.Plugins
                 if (config.Settings.ShowAdminsOnline && (!config.Settings.HideZeroValues || adminCount > 0))
                     message += $"\n👑 **Admins Online:** `{adminCount}`";
 
-                message += $"\n🏗️ **Map Entities:** `{mapEntities:N0}`\n" +
-                          $"💾 **Memory Usage:** `{memoryUsed:N0} MB / {totalMemory:N0} MB`\n" +
-                          $"⚡ **Server FPS:** `{fps:F1}`";
-
                 if (config.Settings.ShowPopulationRecords)
                 {
                     if (pluginData.TodayHigh.Count > 0)
                         message += $"\n📈 **Today's Peak Players:** `{pluginData.TodayHigh.Count}`";
                     
+                    if (pluginData.MonthlyHigh.Count > 0)
+                        message += $"\n📊 **Monthly Peak Players:** `{pluginData.MonthlyHigh.Count}`";
+                    
                     if (pluginData.AllTimeHigh.Count > 0)
                         message += $"\n🏆 **All-Time Peak Players:** `{pluginData.AllTimeHigh.Count}`";
                 }
 
+                if (config.Settings.ShowTotalPlayersEver)
+                    message += $"\n🏢 **Total Server Players:** `{totalPlayersEver:N0}`";
+
+                if (config.Settings.ShowAverageConnectionTime && playerCount > 0)
+                    message += $"\n⏱️ **Average Active Session Time:** `{averageConnectionTime}`";
+
+                message += $"\n\n`🌍 World Data`\n" +
+                          $"🕒 **In-Game Time:** `{GetInGameTime()}`\n" +
+                          $"🌍 **World Size:** `{ConVar.Server.worldsize}`\n" +
+                          $"🌱 **Seed:** `{ConVar.Server.seed}`\n" +
+                          $"🏗️ **Map Entities:** `{mapEntities:N0}`";
+
+                if (config.Settings.ShowProtocol)
+                    message += $"\n🔗 **Protocol:** `{GetServerProtocol()}`";
+
+                message += $"\n\n`🖥️ Server Data`\n" +
+                          $"💾 **Memory Usage:** `{memoryUsed:N0} MB / {totalMemory:N0} MB`\n" +
+                          $"⚡ **Server FPS:** `{fps:F1}`";
+
+                if (config.Settings.ShowNetworkIO)
+                    message += $"\n🌐 **Network IO:** `{networkIO}`";
+
                 message += $"\n🕐 **Server Online For:** `{uptime}`\n" +
                           $"🗺️ **Last Wipe Date:** `{lastWipeDate}`";
 
-                SendDiscordMessage("📊 Server Performance", message, 65535);
+                if (config.Settings.ShowLastBlueprintWipeDate)
+                    message += $"\n📘 **Last Blueprint Wipe Date:** `{lastBpWipeDate}`";
 
-                if (config.Settings.EnableInGamePerformanceMessages)
-                    SendInGamePerformanceMessage(playerCount, sleepingPlayers, joiningPlayers, maxPlayers, adminCount, uptime, lastWipeDate);
+                // Choose color based on server status
+                int embedColor = _isOnline ? 65535 : 16711680;  // Green if online, red if offline
+                string title = "Live Server Statistics";
+
+                SendOrEditDiscordMessage(title, message, embedColor);
             }
             catch (Exception ex)
             {
@@ -434,15 +829,34 @@ namespace Oxide.Plugins
             }
         }
 
-        private void SendInGamePerformanceMessage(int playerCount, int sleepingPlayers, int joiningPlayers, int maxPlayers, int adminCount, string uptime, string lastWipeDate)
+        private void SendInGamePerformanceMessageOnly()
         {
             try
             {
-                string performanceMessage = $"<color=#FFD700><size=14>LIVE SERVER STATISTICS</size></color>\n" +
+                int playerCount = BasePlayer.activePlayerList.Count;
+                int sleepingPlayers = BasePlayer.sleepingPlayerList.Count;
+                int joiningPlayers = ServerMgr.Instance.connectionQueue.Queued;
+                int maxPlayers = ConVar.Server.maxplayers;
+                int adminCount = BasePlayer.activePlayerList.Count(p => p.IsAdmin);
+                int totalPlayersEver = GetTotalPlayersEver();
+
+                SendInGamePerformanceMessage(playerCount, sleepingPlayers, joiningPlayers, maxPlayers, adminCount, totalPlayersEver);
+            }
+            catch (Exception ex)
+            {
+                PrintError($"Error sending in-game performance message: {ex.Message}");
+            }
+        }
+
+        private void SendInGamePerformanceMessage(int playerCount, int sleepingPlayers, int joiningPlayers, int maxPlayers, int adminCount, int totalPlayersEver)
+        {
+            try
+            {
+                string performanceMessage = $"<color=#FFD700><size=14>Population Stats:</size></color>\n" +
                                           $"<color=#00FF00>Players Online:</color> <color=#FFFFFF>{playerCount}/{maxPlayers}</color>";
 
                 if (config.Settings.ShowPlayersJoining && (!config.Settings.HideZeroValues || joiningPlayers > 0))
-                    performanceMessage += $"\n<color=#FFFF00>Players Joining:</color> <color=#FFFFFF>{joiningPlayers}</color>";
+                    performanceMessage += $"\n<color=#FFFF00>Players In Queue:</color> <color=#FFFFFF>{joiningPlayers}</color>";
 
                 if (config.Settings.ShowPlayersSleeping && (!config.Settings.HideZeroValues || sleepingPlayers > 0))
                     performanceMessage += $"\n<color=#FF0000>Players Sleeping:</color> <color=#FFFFFF>{sleepingPlayers}</color>";
@@ -450,8 +864,8 @@ namespace Oxide.Plugins
                 if (config.Settings.ShowAdminsOnline && (!config.Settings.HideZeroValues || adminCount > 0))
                     performanceMessage += $"\n<color=#FFB6C1>Admins Online:</color> <color=#FFFFFF>{adminCount}</color>";
 
-                performanceMessage += $"\n<color=#20B2AA>Server Online For:</color> <color=#FFFFFF>{uptime}</color>\n" +
-                                     $"<color=#87CEEB>Last Wipe Date:</color> <color=#FFFFFF>{lastWipeDate}</color>";
+                if (config.Settings.ShowTotalPlayersEver)
+                    performanceMessage += $"\n<color=#87CEEB>Total Server Players:</color> <color=#FFFFFF>{totalPlayersEver:N0}</color>";
 
                 foreach (var player in BasePlayer.activePlayerList)
                     player?.ChatMessage(performanceMessage);
@@ -519,12 +933,14 @@ namespace Oxide.Plugins
             }
         }
 
-        private void SendDiscordMessage(string title, string description, int color)
+        private void SendOrEditDiscordMessage(string title, string description, int color)
         {
             try
             {
                 string webhookUrl = config.Settings.WebhookURL;
                 if (string.IsNullOrEmpty(webhookUrl)) return;
+
+                if (IsDiscordRateLimited("performance")) return;
 
                 string serverName = ConVar.Server.hostname ?? "Unknown Server";
                 string serverImageUrl = GetServerImageUrl();
@@ -533,22 +949,22 @@ namespace Oxide.Plugins
                     ? serverName.Substring(0, 52) + "..." 
                     : serverName;
 
-                string embedTitle = $"[{displayServerName}]\n{title}";
+                string embedTitle = $"[{displayServerName}]\n\n🤖 Live Server Statistics";
 
                 var embed = new
                 {
                     title = embedTitle,
                     description = description,
                     color = color,
-                    thumbnail = config.Settings.UseThumbnail ? new { url = serverImageUrl } : null,
-                    image = !config.Settings.UseThumbnail ? new { url = serverImageUrl } : null,
-                    footer = new { text = "rPop Server Statistics" },
+                    thumbnail = config.Settings.ShowDiscordImage && config.Settings.UseThumbnail ? new { url = serverImageUrl } : null,
+                    image = config.Settings.ShowDiscordImage && !config.Settings.UseThumbnail ? new { url = serverImageUrl } : null,
+                    footer = new { text = $"rPop Live Server Statistics V{Version} by Ftuoil Xelrash" },
                     timestamp = DateTime.UtcNow.ToString("o")
                 };
 
                 var payload = JsonConvert.SerializeObject(new
                 {
-                    username = "rPop",
+                    username = config.Settings.DiscordBotName,
                     avatar_url = "https://cdn-icons-png.flaticon.com/512/1161/1161388.png",
                     embeds = new[] { embed }
                 });
@@ -559,18 +975,69 @@ namespace Oxide.Plugins
                     ["User-Agent"] = "rPop/1.0"
                 };
 
-                webrequest.Enqueue(webhookUrl, payload, (code, response) =>
+                // If we have a stored message ID, try to edit the existing message
+                if (!string.IsNullOrEmpty(pluginData.StatusMessageId))
                 {
-                    if (code != 200 && code != 204)
+                    string editUrl = $"{webhookUrl}/messages/{pluginData.StatusMessageId}";
+                    
+                    webrequest.Enqueue(editUrl, payload, (code, response) =>
                     {
-                        PrintError($"Discord message failed: {title} (HTTP {code})");
-                    }
-                }, this, Core.Libraries.RequestMethod.POST, headers);
+                        if (code == 200 || code == 204)
+                        {
+                            // Message successfully edited
+                        }
+                        else if (code == 404)
+                        {
+                            // Message not found (deleted?), create a new one
+                            Puts("Discord status message not found, creating new one...");
+                            pluginData.StatusMessageId = null;
+                            SaveData();
+                            CreateNewDiscordMessage(webhookUrl, payload, headers);
+                        }
+                        else
+                        {
+                            PrintError($"Failed to edit Discord message: HTTP {code} - {response}");
+                        }
+                    }, this, Core.Libraries.RequestMethod.PATCH, headers);
+                }
+                else
+                {
+                    // No stored message ID, create a new message
+                    CreateNewDiscordMessage(webhookUrl, payload, headers);
+                }
             }
             catch (Exception ex)
             {
-                PrintError($"Error sending Discord message: {ex.Message}");
+                PrintError($"Error sending/editing Discord message: {ex.Message}");
             }
+        }
+
+        private void CreateNewDiscordMessage(string webhookUrl, string payload, Dictionary<string, string> headers)
+        {
+            webrequest.Enqueue(webhookUrl + "?wait=true", payload, (code, response) =>
+            {
+                if (code == 200)
+                {
+                    try
+                    {
+                        var messageData = JsonConvert.DeserializeObject<Dictionary<string, object>>(response);
+                        if (messageData.ContainsKey("id"))
+                        {
+                            pluginData.StatusMessageId = messageData["id"].ToString();
+                            SaveData();
+                            Puts($"Created new Discord status message with ID: {pluginData.StatusMessageId}");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        PrintError($"Error parsing Discord message response: {ex.Message}");
+                    }
+                }
+                else
+                {
+                    PrintError($"Failed to create Discord message: HTTP {code} - {response}");
+                }
+            }, this, Core.Libraries.RequestMethod.POST, headers);
         }
 
         #endregion
@@ -599,7 +1066,6 @@ namespace Oxide.Plugins
                 
                 if (wipeTime == DateTime.MinValue)
                 {
-                    // Fallback to server startup time if no save file available
                     TimeSpan uptime = TimeSpan.FromSeconds(UnityEngine.Time.realtimeSinceStartup);
                     DateTime serverStart = DateTime.Now - uptime;
                     return $"{serverStart:MMM dd, yyyy} (Server Start)";
@@ -637,13 +1103,11 @@ namespace Oxide.Plugins
                 if (!Directory.Exists(serverPath)) 
                     return DateTime.MinValue;
 
-                // Look for procedural map save files
                 var saveFiles = Directory.GetFiles(serverPath, "ProceduralMap.*.sav", SearchOption.TopDirectoryOnly);
                 
                 if (saveFiles.Length == 0)
                     return DateTime.MinValue;
 
-                // Get the most recent save file and use its creation time
                 var latestSaveFile = saveFiles.OrderByDescending(f => File.GetCreationTime(f)).First();
                 DateTime creationTime = File.GetCreationTime(latestSaveFile);
                 
@@ -671,23 +1135,29 @@ namespace Oxide.Plugins
             }
         }
 
+        private string GetInGameTime()
+        {
+            try
+            {
+                float timeOfDay = TOD_Sky.Instance.Cycle.Hour;
+                int hours = Mathf.FloorToInt(timeOfDay);
+                int minutes = Mathf.FloorToInt((timeOfDay - hours) * 60);
+                
+                string period = hours >= 12 ? "PM" : "AM";
+                int displayHours = hours == 0 ? 12 : (hours > 12 ? hours - 12 : hours);
+                
+                return $"{displayHours:D2}:{minutes:D2} {period}";
+            }
+            catch (Exception ex)
+            {
+                PrintError($"Error getting in-game time: {ex.Message}");
+                return "Unknown";
+            }
+        }
+
         #endregion
 
         #region Console Commands
-
-        [ConsoleCommand("rpop.reload")]
-        private void RPopReloadCommand(ConsoleSystem.Arg arg)
-        {
-            LoadConfig();
-            LoadData();
-            
-            performanceTimer?.Destroy();
-            if (config.Settings.EnablePerformanceMessages)
-                performanceTimer = timer.Every(config.Settings.PerformanceMessageInterval * 60f, SendPerformanceMessage);
-            
-            Puts("rPop configuration and data reloaded!");
-            SendDiscordMessage("🔄 Config Reloaded", "rPop configuration reloaded via console command", 3447003);
-        }
 
         [ConsoleCommand("rpop.test")]
         private void RPopTestCommand(ConsoleSystem.Arg arg)
@@ -699,21 +1169,40 @@ namespace Oxide.Plugins
             int adminCount = BasePlayer.activePlayerList.Count(p => p.IsAdmin);
             string uptime = GetHumanReadableUptime();
             string lastWipeDate = GetLastWipeDate();
+            string lastBpWipeDate = GetFormattedBlueprintWipeDate();
+            string networkIO = GetNetworkIO();
+            int totalPlayersEver = GetTotalPlayersEver();
+            string averageConnectionTime = GetAverageConnectionTime();
 
             Puts($"=== rPop Test Statistics ===");
+            Puts($"Server Status: {GetServerStatus()}");
             Puts($"Players Online: {playerCount}/{maxPlayers}");
             Puts($"Players Joining: {joiningPlayers}");
             Puts($"Players Sleeping: {sleepingPlayers}");
             Puts($"Admins Online: {adminCount}");
+            Puts($"Total Server Players: {totalPlayersEver:N0}");
+            Puts($"Average Session Time: {averageConnectionTime}");
+            Puts($"Network IO: {networkIO}");
+            Puts($"In-Game Time: {GetInGameTime()}");
             Puts($"Server Uptime: {uptime}");
             Puts($"Last Wipe Date: {lastWipeDate}");
+            Puts($"Last Blueprint Wipe Date: {lastBpWipeDate}");
             Puts($"Today's Peak: {pluginData.TodayHigh.Count} players");
+            Puts($"Monthly Peak: {pluginData.MonthlyHigh.Count} players");
             Puts($"All-Time Peak: {pluginData.AllTimeHigh.Count} players");
+            Puts($"Instant Population Updates: {(config.Settings.EnableInstantPopulationUpdates ? "Enabled" : "Disabled")}");
+            Puts($"Population Update Delay: {config.Settings.PopulationUpdateDelay} seconds");
             
-            SendDiscordMessage("🧪 Test Message", 
+            SendOrEditDiscordMessage("🧪 Test Message", 
                 $"Test message sent via console command.\n" +
+                $"**Server Status:** `{GetServerStatus()}`\n" +
                 $"**Server Time:** `{DateTime.Now:yyyy-MM-dd HH:mm:ss}`\n" +
-                $"**Plugin Version:** `{Version}`", 
+                $"**Plugin Version:** `{Version}`\n" +
+                $"**Total Server Players:** `{totalPlayersEver:N0}`\n" +
+                $"**Average Active Session Time:** `{averageConnectionTime}`\n" +
+                $"**Network IO:** `{networkIO}`\n" +
+                $"**Last Blueprint Wipe:** `{lastBpWipeDate}`\n" +
+                $"**Instant Updates:** `{(config.Settings.EnableInstantPopulationUpdates ? "Enabled" : "Disabled")}`", 
                 16776960);
         }
 
@@ -730,7 +1219,26 @@ namespace Oxide.Plugins
             pluginData = new PluginData();
             SaveData();
             Puts("rPop data has been reset!");
-            SendDiscordMessage("🗑️ Data Reset", "Population records have been reset via console command", 16711680);
+            SendOrEditDiscordMessage("🗑️ Data Reset", "Population records have been reset via console command", 16711680);
+        }
+
+        [ConsoleCommand("rpop.resetmessage")]
+        private void RPopResetMessageCommand(ConsoleSystem.Arg arg)
+        {
+            pluginData.StatusMessageId = null;
+            SaveData();
+            Puts("Discord status message ID has been reset. A new message will be created on next update.");
+        }
+
+        [ConsoleCommand("rpop.status")]
+        private void RPopStatusCommand(ConsoleSystem.Arg arg)
+        {
+            Puts($"Server Status: {GetServerStatus()}");
+            Puts($"_isOnline variable: {_isOnline}");
+            Puts($"Instant Population Updates: {(config.Settings.EnableInstantPopulationUpdates ? "Enabled" : "Disabled")}");
+            Puts($"Population Update Delay: {config.Settings.PopulationUpdateDelay} seconds");
+            Puts($"Performance Timer Interval: {config.Settings.PerformanceMessageInterval} minutes");
+            Puts($"Status will update immediately when server shuts down.");
         }
 
         [ConsoleCommand("rpop.help")]
@@ -739,9 +1247,9 @@ namespace Oxide.Plugins
             Puts("rPop Console Commands:");
             Puts("rpop.test - Show current server statistics and send test Discord message");
             Puts("rpop.performance - Force send performance stats to Discord");
-            Puts("rpop.reload - Reload configuration and data");
             Puts("rpop.resetdata - Reset all population records data");
-            Puts("rpop.forceconfig - Force regenerate config file with all Discord settings");
+            Puts("rpop.resetmessage - Reset Discord message ID (creates new status message)");
+            Puts("rpop.status - Show current server status and timer information");
             Puts("rpop.help - Show this help message");
             Puts("");
             Puts("Player Commands:");
@@ -750,7 +1258,36 @@ namespace Oxide.Plugins
             Puts("Configuration:");
             Puts("Data is stored in: oxide/data/rPop.json");
             Puts("Config is stored in: oxide/config/rPop.json");
-            Puts("If Discord settings are missing from your config, use 'rpop.forceconfig'");
+            Puts("");
+            Puts("Discord Setup:");
+            Puts("1. Create a Discord webhook in your channel");
+            Puts("2. Add the webhook URL to the 'Discord Webhook URL' config setting");
+            Puts("3. The plugin will automatically create and update a single status message");
+            Puts("");
+            Puts("Session Time Tracking:");
+            int totalPlayersEver = GetTotalPlayersEver();
+            Puts($"Currently tracking {totalPlayersEver:N0} unique server players");
+            Puts($"Average session time: {GetAverageConnectionTime()}");
+            Puts("Session times are tracked from when players connect to the server");
+            
+            if (!string.IsNullOrEmpty(pluginData.StatusMessageId))
+            {
+                Puts($"Current Discord status message ID: {pluginData.StatusMessageId}");
+            }
+            else
+            {
+                Puts("No Discord status message ID stored (will create new message on next update)");
+            }
+
+            Puts("");
+            Puts("New Features in v0.0.120:");
+            Puts($"✅ Instant Population Updates: {(config.Settings.EnableInstantPopulationUpdates ? "Enabled" : "Disabled")}");
+            Puts($"⏱️ Population Update Delay: {config.Settings.PopulationUpdateDelay} seconds");
+            Puts($"🔄 Timer Reset: Performance timer resets after instant updates");
+            Puts($"Server Status: {GetServerStatus()}");
+            Puts($"Network IO: {GetNetworkIO()}");
+            Puts($"Last Blueprint Wipe Date: {GetFormattedBlueprintWipeDate()}");
+            Puts("Real-time Discord updates when players join/leave!");
         }
 
         [ConsoleCommand("rpop.forceconfig")]
@@ -758,6 +1295,14 @@ namespace Oxide.Plugins
         {
             LoadDefaultConfig();
             Puts("Configuration file regenerated with all default settings!");
+        }
+
+        [ConsoleCommand("rpop.testtimer")]
+        private void RPopTestTimerCommand(ConsoleSystem.Arg arg)
+        {
+            Puts("Testing instant population update and timer reset...");
+            TriggerInstantPopulationUpdate();
+            Puts($"Instant update triggered! Timer will reset after {config.Settings.PopulationUpdateDelay} seconds.");
         }
 
         #endregion
