@@ -9,7 +9,7 @@ using Newtonsoft.Json;
 
 namespace Oxide.Plugins
 {
-    [Info("rPop", "Ftuoil Xelrash", "0.0.120")]
+    [Info("rPop", "Ftuoil Xelrash", "0.0.133")]
     [Description("Displays server population statistics and sends performance updates to Discord")]
 
     public class rPop : RustPlugin
@@ -36,6 +36,7 @@ namespace Oxide.Plugins
             [JsonProperty("Command Cooldown (minutes)")] public float CommandCooldown = 5f;
             [JsonProperty("Show Last Wipe Date")] public bool ShowLastWipeDate = true;
             [JsonProperty("Show Last Blueprint Wipe Date")] public bool ShowLastBlueprintWipeDate = true;
+            [JsonProperty("Show Next Wipe Date")] public bool ShowNextWipeDate = true;
             [JsonProperty("Show Network IO")] public bool ShowNetworkIO = true;
             [JsonProperty("Show Protocol")] public bool ShowProtocol = true;
             [JsonProperty("Show Server Status")] public bool ShowServerStatus = true;
@@ -175,6 +176,7 @@ namespace Oxide.Plugins
                        settings.ContainsKey("Show Total Players Ever") &&
                        settings.ContainsKey("Show Average Connection Time") &&
                        settings.ContainsKey("Show Last Blueprint Wipe Date") &&
+                       settings.ContainsKey("Show Next Wipe Date") &&
                        settings.ContainsKey("Show Network IO") &&
                        settings.ContainsKey("Show Protocol") &&
                        settings.ContainsKey("Show Server Status") &&
@@ -221,6 +223,8 @@ namespace Oxide.Plugins
                         config.Settings.ShowAverageConnectionTime = true;
                     if (!settings.ContainsKey("Show Last Blueprint Wipe Date"))
                         config.Settings.ShowLastBlueprintWipeDate = true;
+                    if (!settings.ContainsKey("Show Next Wipe Date"))
+                        config.Settings.ShowNextWipeDate = true;
                     if (!settings.ContainsKey("Show Network IO"))
                         config.Settings.ShowNetworkIO = true;
                     if (!settings.ContainsKey("Show Protocol"))
@@ -471,9 +475,6 @@ namespace Oxide.Plugins
         {
             try
             {
-                // Get the protocol string the same way DiscordServerStats does it
-                // Looking at PlaceholderAPI, they use server.Protocol which should give us the full version
-                // Since we can't access server.Protocol directly, let's build it correctly
                 return $"{Rust.Protocol.network}.{Rust.Protocol.save}.{Rust.Protocol.report}";
             }
             catch (Exception ex)
@@ -537,16 +538,114 @@ namespace Oxide.Plugins
 
         #endregion
 
+        #region Next Wipe Date Functions
+
+        private string GetServerTimeZoneAbbreviation()
+        {
+            try
+            {
+                TimeZoneInfo tz = TimeZoneInfo.Local;
+                
+                var timezoneMap = new Dictionary<string, string>
+                {
+                    {"Central Standard Time", "CST"},
+                    {"Central Daylight Time", "CDT"},
+                    {"Eastern Standard Time", "EST"},
+                    {"Eastern Daylight Time", "EDT"},
+                    {"Mountain Standard Time", "MST"},
+                    {"Mountain Daylight Time", "MDT"},
+                    {"Pacific Standard Time", "PST"},
+                    {"Pacific Daylight Time", "PDT"},
+                    {"UTC", "UTC"},
+                    {"GMT Standard Time", "GMT"}
+                };
+                
+                string currentName = tz.IsDaylightSavingTime(DateTime.Now) ? tz.DaylightName : tz.StandardName;
+                
+                return timezoneMap.ContainsKey(currentName) ? timezoneMap[currentName] : "Server Time";
+            }
+            catch
+            {
+                return "Server Time";
+            }
+        }
+
+        private DateTime GetFirstThursdayOfMonth(int year, int month)
+        {
+            DateTime firstOfMonth = new DateTime(year, month, 1);
+            
+            int daysUntilThursday = ((int)DayOfWeek.Thursday - (int)firstOfMonth.DayOfWeek + 7) % 7;
+            
+            return firstOfMonth.AddDays(daysUntilThursday);
+        }
+
+        private DateTime GetNextWipeDateTime()
+        {
+            DateTime now = DateTime.Now;
+            DateTime firstThursday = GetFirstThursdayOfMonth(now.Year, now.Month);
+            DateTime wipeDateTime = new DateTime(firstThursday.Year, firstThursday.Month, firstThursday.Day, 13, 0, 0);
+            
+            if (now > wipeDateTime)
+            {
+                DateTime nextMonth = now.AddMonths(1);
+                DateTime nextFirstThursday = GetFirstThursdayOfMonth(nextMonth.Year, nextMonth.Month);
+                wipeDateTime = new DateTime(nextFirstThursday.Year, nextFirstThursday.Month, nextFirstThursday.Day, 13, 0, 0);
+            }
+            
+            return wipeDateTime;
+        }
+
+        private string FormatTimeRemaining(TimeSpan timeSpan)
+        {
+            if (timeSpan.TotalDays >= 1)
+                return $"{(int)timeSpan.TotalDays}d {timeSpan.Hours}h {timeSpan.Minutes}m";
+            else if (timeSpan.TotalHours >= 1)
+                return $"{timeSpan.Hours}h {timeSpan.Minutes}m";
+            else
+                return $"{timeSpan.Minutes}m";
+        }
+
+        private string GetFormattedNextWipeDate()
+        {
+            try
+            {
+                DateTime nextWipe = GetNextWipeDateTime();
+                TimeSpan timeUntil = nextWipe - DateTime.Now;
+                string timezone = GetServerTimeZoneAbbreviation();
+                
+                if (nextWipe.Date == DateTime.Today)
+                {
+                    if (timeUntil.TotalMinutes <= 0)
+                        return $"Today 1:00 PM {timezone} (Wipe in progress!)";
+                    else
+                        return $"Today 1:00 PM {timezone} (in {FormatTimeRemaining(timeUntil)})";
+                }
+                else if (nextWipe.Date == DateTime.Today.AddDays(1))
+                {
+                    return $"Tomorrow 1:00 PM {timezone} (in {FormatTimeRemaining(timeUntil)})";
+                }
+                else
+                {
+                    return $"{nextWipe:MMM dd, yyyy} 1:00 PM {timezone} (in {FormatTimeRemaining(timeUntil)})";
+                }
+            }
+            catch (Exception ex)
+            {
+                PrintError($"Error formatting next wipe date: {ex.Message}");
+                return "Unknown";
+            }
+        }
+
+        #endregion
+
         #region Population Update Timer Management
 
         private void ResetPerformanceTimer()
         {
             try
             {
-                // Destroy existing timer
                 performanceTimer?.Destroy();
                 
-                // Create new timer with full interval
                 if (config.Settings.EnablePerformanceMessages)
                 {
                     performanceTimer = timer.Every(config.Settings.PerformanceMessageInterval * 60f, SendPerformanceMessage);
@@ -570,11 +669,9 @@ namespace Oxide.Plugins
                     return;
                 }
 
-                // Send immediate Discord update
                 timer.Once(config.Settings.PopulationUpdateDelay, () =>
                 {
                     SendPerformanceMessage();
-                    // Reset the regular timer after sending instant update
                     ResetPerformanceTimer();
                 });
                 
@@ -594,12 +691,11 @@ namespace Oxide.Plugins
         {
             try
             {
-                _isOnline = true;  // Mark server as online
+                _isOnline = true;
                 Puts("Server marked as ONLINE");
                 
                 LoadData();
                 
-                // Initialize save info for blueprint tracking
                 try
                 {
                     string saveInfoPath = Path.Combine(World.SaveFolderName, $"player.blueprints.{Rust.Protocol.persistance}.db");
@@ -613,16 +709,12 @@ namespace Oxide.Plugins
                 if (config.Settings.EnablePerformanceMessages)
                 {
                     performanceTimer = timer.Every(config.Settings.PerformanceMessageInterval * 60f, SendPerformanceMessage);
-                    
-                    // Send initial Discord message after a short delay
                     timer.Once(10f, SendPerformanceMessage);
                 }
 
                 if (config.Settings.EnableInGamePerformanceMessages)
                 {
                     inGameMessageTimer = timer.Every(config.Settings.InGameMessageInterval * 60f, SendInGamePerformanceMessageOnly);
-                    
-                    // Don't send initial in-game message on plugin load
                 }
                 
                 UpdatePopulationRecords();
@@ -637,10 +729,9 @@ namespace Oxide.Plugins
         {
             try
             {
-                _isOnline = false;  // Mark server as offline
+                _isOnline = false;
                 Puts("Server marked as OFFLINE - sending final Discord update");
                 
-                // Send immediate final update to Discord showing offline status
                 if (config.Settings.EnablePerformanceMessages && !string.IsNullOrEmpty(config.Settings.WebhookURL))
                 {
                     SendPerformanceMessage();
@@ -714,7 +805,6 @@ namespace Oxide.Plugins
             int joiningPlayers = ServerMgr.Instance.connectionQueue.Queued;
             int maxPlayers = ConVar.Server.maxplayers;
             int adminCount = BasePlayer.activePlayerList.Count(p => p.IsAdmin);
-            string uptime = GetHumanReadableUptime();
 
             string statsMessage = $"<color=#FFD700><size=14>Population Stats:</size></color>\n" +
                                 $"<color=#00FF00>Players Online:</color> <color=#FFFFFF>{playerCount}/{maxPlayers}</color>";
@@ -755,16 +845,15 @@ namespace Oxide.Plugins
                 string averageConnectionTime = GetAverageConnectionTime();
                 string networkIO = GetNetworkIO();
                 string lastBpWipeDate = GetFormattedBlueprintWipeDate();
+                string nextWipeDate = GetFormattedNextWipeDate();
 
                 string message = "";
 
-                // Add server status at the very top with spacing
                 if (config.Settings.ShowServerStatus)
                 {
                     message += $"{GetServerStatusEmoji()} **Server Status:** `{GetServerStatusText()}`\n\n";
                 }
 
-                // Population Data section header
                 message += $"`📊 Population Data`\n";
                 message += $"🟢 **Players Online:** `{playerCount}/{maxPlayers}`";
 
@@ -812,13 +901,15 @@ namespace Oxide.Plugins
                     message += $"\n🌐 **Network IO:** `{networkIO}`";
 
                 message += $"\n🕐 **Server Online For:** `{uptime}`\n" +
-                          $"🗺️ **Last Wipe Date:** `{lastWipeDate}`";
+                          $"🗺️ **Last Wipe:** `{lastWipeDate}`";
+
+                if (config.Settings.ShowNextWipeDate)
+                    message += $"\n📅 **Next Wipe:** `{nextWipeDate}`";
 
                 if (config.Settings.ShowLastBlueprintWipeDate)
-                    message += $"\n📘 **Last Blueprint Wipe Date:** `{lastBpWipeDate}`";
+                    message += $"\n📘 **Last BP Wipe:** `{lastBpWipeDate}`";
 
-                // Choose color based on server status
-                int embedColor = _isOnline ? 65535 : 16711680;  // Green if online, red if offline
+                int embedColor = _isOnline ? 65535 : 16711680;
                 string title = "Live Server Statistics";
 
                 SendOrEditDiscordMessage(title, message, embedColor);
@@ -945,8 +1036,8 @@ namespace Oxide.Plugins
                 string serverName = ConVar.Server.hostname ?? "Unknown Server";
                 string serverImageUrl = GetServerImageUrl();
 
-                string displayServerName = serverName.Length > 55 
-                    ? serverName.Substring(0, 52) + "..." 
+                string displayServerName = serverName.Length > 45 
+                    ? serverName.Substring(0, 42) + "..." 
                     : serverName;
 
                 string embedTitle = $"[{displayServerName}]\n\n🤖 Live Server Statistics";
@@ -975,7 +1066,6 @@ namespace Oxide.Plugins
                     ["User-Agent"] = "rPop/1.0"
                 };
 
-                // If we have a stored message ID, try to edit the existing message
                 if (!string.IsNullOrEmpty(pluginData.StatusMessageId))
                 {
                     string editUrl = $"{webhookUrl}/messages/{pluginData.StatusMessageId}";
@@ -988,7 +1078,6 @@ namespace Oxide.Plugins
                         }
                         else if (code == 404)
                         {
-                            // Message not found (deleted?), create a new one
                             Puts("Discord status message not found, creating new one...");
                             pluginData.StatusMessageId = null;
                             SaveData();
@@ -1002,7 +1091,6 @@ namespace Oxide.Plugins
                 }
                 else
                 {
-                    // No stored message ID, create a new message
                     CreateNewDiscordMessage(webhookUrl, payload, headers);
                 }
             }
@@ -1170,12 +1258,15 @@ namespace Oxide.Plugins
             string uptime = GetHumanReadableUptime();
             string lastWipeDate = GetLastWipeDate();
             string lastBpWipeDate = GetFormattedBlueprintWipeDate();
+            string nextWipeDate = GetFormattedNextWipeDate();
             string networkIO = GetNetworkIO();
             int totalPlayersEver = GetTotalPlayersEver();
             string averageConnectionTime = GetAverageConnectionTime();
+            string timezone = GetServerTimeZoneAbbreviation();
 
             Puts($"=== rPop Test Statistics ===");
             Puts($"Server Status: {GetServerStatus()}");
+            Puts($"Server Timezone: {timezone}");
             Puts($"Players Online: {playerCount}/{maxPlayers}");
             Puts($"Players Joining: {joiningPlayers}");
             Puts($"Players Sleeping: {sleepingPlayers}");
@@ -1186,6 +1277,7 @@ namespace Oxide.Plugins
             Puts($"In-Game Time: {GetInGameTime()}");
             Puts($"Server Uptime: {uptime}");
             Puts($"Last Wipe Date: {lastWipeDate}");
+            Puts($"Next Wipe Date: {nextWipeDate}");
             Puts($"Last Blueprint Wipe Date: {lastBpWipeDate}");
             Puts($"Today's Peak: {pluginData.TodayHigh.Count} players");
             Puts($"Monthly Peak: {pluginData.MonthlyHigh.Count} players");
@@ -1198,9 +1290,11 @@ namespace Oxide.Plugins
                 $"**Server Status:** `{GetServerStatus()}`\n" +
                 $"**Server Time:** `{DateTime.Now:yyyy-MM-dd HH:mm:ss}`\n" +
                 $"**Plugin Version:** `{Version}`\n" +
+                $"**Server Timezone:** `{timezone}`\n" +
                 $"**Total Server Players:** `{totalPlayersEver:N0}`\n" +
                 $"**Average Active Session Time:** `{averageConnectionTime}`\n" +
                 $"**Network IO:** `{networkIO}`\n" +
+                $"**Next Wipe Date:** `{nextWipeDate}`\n" +
                 $"**Last Blueprint Wipe:** `{lastBpWipeDate}`\n" +
                 $"**Instant Updates:** `{(config.Settings.EnableInstantPopulationUpdates ? "Enabled" : "Disabled")}`", 
                 16776960);
@@ -1235,6 +1329,8 @@ namespace Oxide.Plugins
         {
             Puts($"Server Status: {GetServerStatus()}");
             Puts($"_isOnline variable: {_isOnline}");
+            Puts($"Server Timezone: {GetServerTimeZoneAbbreviation()}");
+            Puts($"Next Wipe Date: {GetFormattedNextWipeDate()}");
             Puts($"Instant Population Updates: {(config.Settings.EnableInstantPopulationUpdates ? "Enabled" : "Disabled")}");
             Puts($"Population Update Delay: {config.Settings.PopulationUpdateDelay} seconds");
             Puts($"Performance Timer Interval: {config.Settings.PerformanceMessageInterval} minutes");
@@ -1278,16 +1374,12 @@ namespace Oxide.Plugins
             {
                 Puts("No Discord status message ID stored (will create new message on next update)");
             }
-
+            
             Puts("");
-            Puts("New Features in v0.0.120:");
-            Puts($"✅ Instant Population Updates: {(config.Settings.EnableInstantPopulationUpdates ? "Enabled" : "Disabled")}");
-            Puts($"⏱️ Population Update Delay: {config.Settings.PopulationUpdateDelay} seconds");
-            Puts($"🔄 Timer Reset: Performance timer resets after instant updates");
-            Puts($"Server Status: {GetServerStatus()}");
-            Puts($"Network IO: {GetNetworkIO()}");
-            Puts($"Last Blueprint Wipe Date: {GetFormattedBlueprintWipeDate()}");
-            Puts("Real-time Discord updates when players join/leave!");
+            Puts("Wipe Schedule:");
+            Puts($"Server Timezone: {GetServerTimeZoneAbbreviation()}");
+            Puts($"Next Wipe Date: {GetFormattedNextWipeDate()}");
+            Puts("Wipes occur on the first Thursday of each month at 1:00 PM server time");
         }
 
         [ConsoleCommand("rpop.forceconfig")]
@@ -1295,14 +1387,6 @@ namespace Oxide.Plugins
         {
             LoadDefaultConfig();
             Puts("Configuration file regenerated with all default settings!");
-        }
-
-        [ConsoleCommand("rpop.testtimer")]
-        private void RPopTestTimerCommand(ConsoleSystem.Arg arg)
-        {
-            Puts("Testing instant population update and timer reset...");
-            TriggerInstantPopulationUpdate();
-            Puts($"Instant update triggered! Timer will reset after {config.Settings.PopulationUpdateDelay} seconds.");
         }
 
         #endregion
