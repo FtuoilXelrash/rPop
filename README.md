@@ -261,27 +261,15 @@ The plugin stores data in `oxide/data/rPop.json`:
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## 👨‍💻 Author
+[Ftuoil Xelrash](https://github.com/FtuoilXelrash)
 
-**Ftuoil Xelrash**
 
-## 🆕 Version History
-
-### v0.0.120 (Latest)
-- ✅ Added instant population updates when players join/leave
-- ✅ Improved Discord message editing (single persistent message)
-- ✅ Enhanced server status tracking (online/offline detection)
-- ✅ Added network I/O monitoring
-- ✅ Blueprint wipe date tracking
-- ✅ Server protocol display
-- ✅ Timer reset functionality after instant updates
-- ✅ Comprehensive console command system
-- ✅ Enhanced error handling and validation
 
 ## 🔗 Links
 
 - [Download Latest Release](https://github.com/FtuoilXelrash/rPop/releases)
 - [Report Issues](https://github.com/FtuoilXelrash/rPop/issues)
-- [Umod Plugin Page](https://umod.org/plugins/rpop)
+
 
 ---
 
