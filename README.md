@@ -296,7 +296,7 @@ The plugin manages data in `oxide/data/rPop.json`:
 📅 Next Wipe: Feb 06, 2025 1:00 PM CST (in 21d 18h 30m)
 📘 Last BP Wipe: Jan 01, 2025 (16d ago)
 
-rPop Live Server Statistics V0.0.133 by Ftuoil Xelrash
+rPop Live Server Statistics V1.0.0 by Ftuoil Xelrash
 ```
 
 ## 🕐 Wipe Schedule System
@@ -534,7 +534,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ### Issue Template
 When reporting bugs, please include:
 ```
-**Plugin Version:** 0.0.133
+**Plugin Version:** 1.0.0
 **Umod Version:** [Your Version]
 **Server Population:** [Typical player count]
 **Error Message:** [Full console output]
@@ -565,5 +565,3 @@ Special thanks to:
 ![GitHub License](https://img.shields.io/github/license/FtuoilXelrash/rPop)
 
 ⭐ **Star this repository if you find it useful!** ⭐
-
-*Last Updated: January 2025 - Version 0.0.133*
