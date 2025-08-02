@@ -2,7 +2,7 @@
 
 ![Rust](https://img.shields.io/badge/Game-Rust-orange)
 ![Umod](https://img.shields.io/badge/Framework-Umod-blue)
-![Version](https://img.shields.io/badge/Version-1.0.0-green)
+![Version](https://img.shields.io/badge/Version-1.0.1-green)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 
 A comprehensive Umod plugin for Rust servers that tracks and reports server performance statistics and population data to Discord in real-time with automatic message editing and instant population updates.
@@ -296,7 +296,7 @@ The plugin manages data in `oxide/data/rPop.json`:
 📅 Next Wipe: Feb 06, 2025 1:00 PM CST (in 21d 18h 30m)
 📘 Last BP Wipe: Jan 01, 2025 (16d ago)
 
-rPop Live Server Statistics V1.0.0 by Ftuoil Xelrash
+rPop Live Server Statistics V1.0.1 by Ftuoil Xelrash
 ```
 
 ## 🕐 Wipe Schedule System
@@ -534,7 +534,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ### Issue Template
 When reporting bugs, please include:
 ```
-**Plugin Version:** 1.0.0
+**Plugin Version:** 1.0.1
 **Umod Version:** [Your Version]
 **Server Population:** [Typical player count]
 **Error Message:** [Full console output]
