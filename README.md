@@ -5,6 +5,11 @@
 ![Version](https://img.shields.io/badge/Version-1.0.1-green)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 
+<div align="center">
+  <img src="plugin.png" alt="rPop Plugin Screenshot" width="600">
+  <p><em>Live Discord statistics showing real-time server population and performance data</em></p>
+</div>
+
 A comprehensive Umod plugin for Rust servers that tracks and reports server performance statistics and population data to Discord in real-time with automatic message editing and instant population updates.
 
 ## 🚀 Features
