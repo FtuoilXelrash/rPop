@@ -367,12 +367,6 @@ real gameplay setting.
                                     SUPPORT
 ===============================================================================
 
-GETTING HELP:
-1. Check this documentation thoroughly
-2. Use console command "rpop.help" for quick reference
-3. Run "rpop.test" to verify functionality
-4. Check GitHub repository for updates and issue reports
-
 WHEN REPORTING BUGS, INCLUDE:
 - Plugin Version: 1.0.0
 - Umod Version: [Your Version]

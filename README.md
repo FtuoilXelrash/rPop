@@ -547,12 +547,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🆘 Support
 
-### Getting Help
-1. **Check Documentation:** Review this README thoroughly
-2. **Console Commands:** Use `rpop.help` for quick reference
-3. **Test Setup:** Run `rpop.test` to verify functionality
-4. **Issue Reports:** Use GitHub Issues with detailed information
-
 ### Issue Template
 When reporting bugs, please include:
 ```
