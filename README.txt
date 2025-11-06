@@ -336,6 +336,34 @@ SERVER STATUS DETECTION:
 - Visual Indicators: Color-coded Discord embeds and emoji status
 
 ===============================================================================
+                            SUPPORT & COMMUNITY
+===============================================================================
+
+- Report Issues: https://github.com/FtuoilXelrash/rPop/issues
+  Bug reports and feature requests
+
+- Discord Support: https://discord.gg/G8mfZH2TMp
+  Join our community for help and discussions
+
+- Download Latest: https://github.com/FtuoilXelrash/rPop/releases
+  Always get the newest version
+
+===============================================================================
+                        DEVELOPMENT & TESTING SERVER
+===============================================================================
+
+DARKTIDIA SOLO ONLY - See rPop and other custom plugins in action!
+All players are welcome to join our development server where plugins are
+tested and refined in a live environment.
+
+SERVER DETAILS:
+- Server Name: Darktidia Solo Only | Monthly | 2x | 50% Upkeep | No BP Wipes
+- Find Server: https://www.battlemetrics.com/servers/rust/33277489
+
+Experience the plugin live, test configurations, and provide feedback in a
+real gameplay setting.
+
+===============================================================================
                                     SUPPORT
 ===============================================================================
 
