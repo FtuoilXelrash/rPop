@@ -47,7 +47,7 @@ DISCORD INTEGRATION:
 - Persistent message tracking - Single message that updates continuously
 
 IN-GAME FEATURES:
-- !pop command - Display comprehensive server stats to all players
+- !pop / /pop command - Display comprehensive server stats to all players
 - Configurable cooldown with intelligent time display
 - Rich chat formatting with colors and proper spacing
 - Automatic broadcasting to all online players
@@ -152,8 +152,10 @@ IN-GAME BROADCASTING:
 ===============================================================================
 
 PLAYER COMMANDS:
-!pop - Display comprehensive server statistics to all online players
-       (Cooldown: configurable, default 5 minutes)
+!pop  - Display comprehensive server statistics to all online players
+        (Cooldown: configurable, default 5 minutes)
+/pop  - Identical to !pop — slash command alternative
+        (Shares the same cooldown as !pop)
 
 CONSOLE COMMANDS:
 rpop.help - Display comprehensive help and setup information
@@ -368,7 +370,7 @@ real gameplay setting.
 ===============================================================================
 
 WHEN REPORTING BUGS, INCLUDE:
-- Plugin Version: 1.0.0
+- Plugin Version: 1.0.2
 - Umod Version: [Your Version]
 - Server Population: [Typical player count]
 - Error Message: [Full console output]
