@@ -9,7 +9,7 @@ using Newtonsoft.Json;
 
 namespace Oxide.Plugins
 {
-    [Info("rPop", "Ftuoil Xelrash", "1.0.2")]
+    [Info("rPop", "Ftuoil Xelrash", "1.0.4")]
     [Description("Displays server population statistics and sends performance updates to Discord")]
 
     public class rPop : RustPlugin
@@ -19,6 +19,7 @@ namespace Oxide.Plugins
         private ConfigData config;
         private PluginData pluginData;
         private DateTime lastPopCommandTime = DateTime.MinValue;
+        private DateTime lastWipeCommandTime = DateTime.MinValue;
         private Timer performanceTimer;
         private Timer inGameMessageTimer;
         private readonly Dictionary<string, DateTime> lastDiscordMessage = new Dictionary<string, DateTime>();
@@ -33,6 +34,7 @@ namespace Oxide.Plugins
         public class PluginSettings
         {
             [JsonProperty("Enable !pop Command")] public bool EnablePopCommand = true;
+            [JsonProperty("Enable !wipe Command")] public bool EnableWipeCommand = true;
             [JsonProperty("Command Cooldown (minutes)")] public float CommandCooldown = 5f;
             [JsonProperty("Show Last Wipe Date")] public bool ShowLastWipeDate = true;
             [JsonProperty("Show Last Blueprint Wipe Date")] public bool ShowLastBlueprintWipeDate = true;
@@ -181,7 +183,8 @@ namespace Oxide.Plugins
                        settings.ContainsKey("Show Protocol") &&
                        settings.ContainsKey("Show Server Status") &&
                        settings.ContainsKey("Enable Instant Population Updates") &&
-                       settings.ContainsKey("Population Update Delay (seconds)");
+                       settings.ContainsKey("Population Update Delay (seconds)") &&
+                       settings.ContainsKey("Enable !wipe Command");
 
                 if (!hasAll)
                 {
@@ -235,6 +238,8 @@ namespace Oxide.Plugins
                         config.Settings.EnableInstantPopulationUpdates = true;
                     if (!settings.ContainsKey("Population Update Delay (seconds)"))
                         config.Settings.PopulationUpdateDelay = 2f;
+                    if (!settings.ContainsKey("Enable !wipe Command"))
+                        config.Settings.EnableWipeCommand = true;
                 }
 
                 return hasAll;
@@ -774,6 +779,8 @@ namespace Oxide.Plugins
 
             if (message.ToLower() == "!pop")
                 HandlePopCommand(player);
+            else if (message.ToLower() == "!wipe")
+                HandleWipeCommand(player);
         }
 
         #endregion
@@ -784,6 +791,12 @@ namespace Oxide.Plugins
         private void PopChatCommand(BasePlayer player, string command, string[] args)
         {
             HandlePopCommand(player);
+        }
+
+        [ChatCommand("wipe")]
+        private void WipeChatCommand(BasePlayer player, string command, string[] args)
+        {
+            HandleWipeCommand(player);
         }
 
         private void HandlePopCommand(BasePlayer player)
@@ -826,6 +839,41 @@ namespace Oxide.Plugins
 
             foreach (var onlinePlayer in BasePlayer.activePlayerList)
                 onlinePlayer?.ChatMessage(statsMessage);
+        }
+
+        private void HandleWipeCommand(BasePlayer player)
+        {
+            if (!config.Settings.EnableWipeCommand)
+            {
+                player.ChatMessage("The !wipe command is currently disabled.");
+                return;
+            }
+
+            var now = DateTime.Now;
+            var timeSinceLastUse = now - lastWipeCommandTime;
+
+            if (timeSinceLastUse.TotalMinutes < config.Settings.CommandCooldown)
+            {
+                var remainingTime = TimeSpan.FromMinutes(config.Settings.CommandCooldown) - timeSinceLastUse;
+                player.ChatMessage($"Wipe information is on cooldown. Try again in {GetCooldownTime(remainingTime)}.");
+                return;
+            }
+
+            lastWipeCommandTime = now;
+
+            string wipeMessage = $"<color=#FFD700><size=14>Wipe Information:</size></color>";
+
+            if (config.Settings.ShowLastWipeDate)
+                wipeMessage += $"\n<color=#FFA500>Last Wipe:</color> <color=#FFFFFF>{GetLastWipeDate()}</color>";
+
+            if (config.Settings.ShowLastBlueprintWipeDate)
+                wipeMessage += $"\n<color=#ADD8E6>Last BP Wipe:</color> <color=#FFFFFF>{GetFormattedBlueprintWipeDate()}</color>";
+
+            if (config.Settings.ShowNextWipeDate)
+                wipeMessage += $"\n<color=#00BFFF>Next Wipe:</color> <color=#FFFFFF>{GetFormattedNextWipeDate()}</color>";
+
+            foreach (var onlinePlayer in BasePlayer.activePlayerList)
+                onlinePlayer?.ChatMessage(wipeMessage);
         }
 
         #endregion
@@ -900,20 +948,21 @@ namespace Oxide.Plugins
                     message += $"\n🔗 **Protocol:** `{GetServerProtocol()}`";
 
                 message += $"\n\n`🖥️ Server Data`\n" +
-                          $"💾 **Memory Usage:** `{memoryUsed:N0} MB / {totalMemory:N0} MB`\n" +
-                          $"⚡ **Server FPS:** `{fps:F1}`";
+                          $"🕐 **Server Online For:** `{uptime}`";
 
                 if (config.Settings.ShowNetworkIO)
                     message += $"\n🌐 **Network IO:** `{networkIO}`";
 
-                message += $"\n🕐 **Server Online For:** `{uptime}`\n" +
-                          $"🗺️ **Last Wipe:** `{lastWipeDate}`";
+                message += $"\n💾 **Memory Usage:** `{memoryUsed:N0} MB / {totalMemory:N0} MB`\n" +
+                          $"⚡ **Server FPS:** `{fps:F1}`\n";
 
-                if (config.Settings.ShowNextWipeDate)
-                    message += $"\n📅 **Next Wipe:** `{nextWipeDate}`";
+                message += $"\n🗺️ **Last Wipe:** `{lastWipeDate}`";
 
                 if (config.Settings.ShowLastBlueprintWipeDate)
                     message += $"\n📘 **Last BP Wipe:** `{lastBpWipeDate}`";
+
+                if (config.Settings.ShowNextWipeDate)
+                    message += $"\n📅 **Next Wipe:** `{nextWipeDate}`";
 
                 int embedColor = _isOnline ? 65535 : 16711680;
                 string title = "Live Server Statistics";

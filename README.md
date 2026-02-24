@@ -2,7 +2,7 @@
 
 ![Rust](https://img.shields.io/badge/Game-Rust-orange)
 ![Umod](https://img.shields.io/badge/Framework-Umod-blue)
-![Version](https://img.shields.io/badge/Version-1.0.2-green)
+![Version](https://img.shields.io/badge/Version-1.0.4-green)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 
 A comprehensive Umod plugin for Rust servers that tracks and reports server performance statistics and population data to Discord in real-time with automatic message editing and instant population updates.
@@ -54,6 +54,7 @@ A comprehensive Umod plugin for Rust servers that tracks and reports server perf
 
 ### 🎮 Enhanced In-Game Features
 - **!pop / /pop command** - Display comprehensive server stats to all players
+- **!wipe / /wipe command** - Display wipe date information to all players
 - **Configurable cooldown** with intelligent time display
 - **Rich chat formatting** with colors and proper spacing
 - **Automatic broadcasting** to all online players
@@ -90,6 +91,7 @@ The plugin creates a comprehensive configuration file at `oxide/config/rPop.json
 {
   "Settings": {
     "Enable !pop Command": true,
+    "Enable !wipe Command": true,
     "Command Cooldown (minutes)": 5.0,
     "Show Last Wipe Date": true,
     "Show Last Blueprint Wipe Date": true,
@@ -158,6 +160,8 @@ The plugin creates a comprehensive configuration file at `oxide/config/rPop.json
 |---------|-------------|----------|--------|
 | `!pop` | Display comprehensive server statistics to all online players | Configurable (default: 5 minutes) | All players |
 | `/pop` | Identical to `!pop` — slash command alternative | Shared cooldown with `!pop` | All players |
+| `!wipe` | Display wipe date information to all online players | Configurable (default: 5 minutes) | All players |
+| `/wipe` | Identical to `!wipe` — slash command alternative | Shared cooldown with `!wipe` | All players |
 
 ### Console Commands
 | Command | Description | Access |
@@ -295,15 +299,16 @@ The plugin manages data in `oxide/data/rPop.json`:
 🔗 Protocol: 2436.86.0
 
 🖥️ Server Data
+🕐 Server Online For: 2 days, 14 hours, 32 minutes
+🌐 Network IO: In: 1.25 KB/s Out: 2.34 KB/s
 💾 Memory Usage: 8,192 MB / 16,384 MB
 ⚡ Server FPS: 58.3
-🌐 Network IO: In: 1.25 KB/s Out: 2.34 KB/s
-🕐 Server Online For: 2 days, 14 hours, 32 minutes
-🗺️ Last Wipe Date: Jan 15, 2025 (2d ago)
-📅 Next Wipe: Feb 06, 2025 1:00 PM CST (in 21d 18h 30m)
-📘 Last BP Wipe: Jan 01, 2025 (16d ago)
 
-rPop Live Server Statistics V1.0.2 by Ftuoil Xelrash
+🗺️ Last Wipe: Jan 15, 2025 (2d ago)
+📘 Last BP Wipe: Jan 01, 2025 (16d ago)
+📅 Next Wipe: Feb 06, 2025 1:00 PM CST (in 21d 18h 30m)
+
+rPop Live Server Statistics V1.0.4 by Ftuoil Xelrash
 ```
 
 ## 🕐 Wipe Schedule System
@@ -551,7 +556,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ### Issue Template
 When reporting bugs, please include:
 ```
-**Plugin Version:** 1.0.2
+**Plugin Version:** 1.0.4
 **Umod Version:** [Your Version]
 **Server Population:** [Typical player count]
 **Error Message:** [Full console output]

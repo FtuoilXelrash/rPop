@@ -48,6 +48,7 @@ DISCORD INTEGRATION:
 
 IN-GAME FEATURES:
 - !pop / /pop command - Display comprehensive server stats to all players
+- !wipe / /wipe command - Display wipe date information to all players
 - Configurable cooldown with intelligent time display
 - Rich chat formatting with colors and proper spacing
 - Automatic broadcasting to all online players
@@ -111,8 +112,9 @@ oxide/config/rPop.json
 KEY SETTINGS:
 
 CORE SETTINGS:
-- Enable !pop Command: true/false - Enable player command
-- Command Cooldown (minutes): 5.0 - Cooldown between !pop uses
+- Enable !pop Command: true/false - Enable !pop / /pop player command
+- Enable !wipe Command: true/false - Enable !wipe / /wipe player command
+- Command Cooldown (minutes): 5.0 - Cooldown for player commands (each command has its own independent timer)
 - Show Last Wipe Date: true/false - Display last server wipe
 - Show Next Wipe Date: true/false - Show predicted next wipe
 - Show Server Status: true/false - Display online/offline status
@@ -156,6 +158,10 @@ PLAYER COMMANDS:
         (Cooldown: configurable, default 5 minutes)
 /pop  - Identical to !pop — slash command alternative
         (Shares the same cooldown as !pop)
+!wipe - Display wipe date information to all online players
+        (Cooldown: configurable, default 5 minutes - independent of !pop)
+/wipe - Identical to !wipe — slash command alternative
+        (Shares the same cooldown as !wipe)
 
 CONSOLE COMMANDS:
 rpop.help - Display comprehensive help and setup information
@@ -370,7 +376,7 @@ real gameplay setting.
 ===============================================================================
 
 WHEN REPORTING BUGS, INCLUDE:
-- Plugin Version: 1.0.2
+- Plugin Version: 1.0.4
 - Umod Version: [Your Version]
 - Server Population: [Typical player count]
 - Error Message: [Full console output]
