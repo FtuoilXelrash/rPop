@@ -2,7 +2,7 @@
 
 ![Rust](https://img.shields.io/badge/Game-Rust-orange)
 ![Umod](https://img.shields.io/badge/Framework-Umod-blue)
-![Version](https://img.shields.io/badge/Version-1.0.4-green)
+![Version](https://img.shields.io/badge/Version-1.0.5-green)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 
 A comprehensive Umod plugin for Rust servers that tracks and reports server performance statistics and population data to Discord in real-time with automatic message editing and instant population updates.
@@ -53,8 +53,8 @@ A comprehensive Umod plugin for Rust servers that tracks and reports server perf
 - **Error handling** - Automatic recovery from deleted messages
 
 ### 🎮 Enhanced In-Game Features
-- **!pop / /pop command** - Display comprehensive server stats to all players
-- **!wipe / /wipe command** - Display wipe date information to all players
+- **!pop / /pop command** - Silently display comprehensive server stats to all players (trigger not visible in chat)
+- **!wipe / /wipe command** - Silently display wipe date information to all players (trigger not visible in chat)
 - **Configurable cooldown** with intelligent time display
 - **Rich chat formatting** with colors and proper spacing
 - **Automatic broadcasting** to all online players
@@ -158,9 +158,9 @@ The plugin creates a comprehensive configuration file at `oxide/config/rPop.json
 ### Player Commands
 | Command | Description | Cooldown | Access |
 |---------|-------------|----------|--------|
-| `!pop` | Display comprehensive server statistics to all online players | Configurable (default: 5 minutes) | All players |
+| `!pop` | Silently display comprehensive server statistics to all online players (trigger not visible in chat) | Configurable (default: 5 minutes) | All players |
 | `/pop` | Identical to `!pop` — slash command alternative | Shared cooldown with `!pop` | All players |
-| `!wipe` | Display wipe date information to all online players | Configurable (default: 5 minutes) | All players |
+| `!wipe` | Silently display wipe date information to all online players (trigger not visible in chat) | Configurable (default: 5 minutes) | All players |
 | `/wipe` | Identical to `!wipe` — slash command alternative | Shared cooldown with `!wipe` | All players |
 
 ### Console Commands
@@ -308,7 +308,7 @@ The plugin manages data in `oxide/data/rPop.json`:
 📘 Last BP Wipe: Jan 01, 2025 (16d ago)
 📅 Next Wipe: Feb 06, 2025 1:00 PM CST (in 21d 18h 30m)
 
-rPop Live Server Statistics V1.0.4 by Ftuoil Xelrash
+rPop Live Server Statistics V1.0.5 by Ftuoil Xelrash
 ```
 
 ## 🕐 Wipe Schedule System
@@ -556,7 +556,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ### Issue Template
 When reporting bugs, please include:
 ```
-**Plugin Version:** 1.0.4
+**Plugin Version:** 1.0.5
 **Umod Version:** [Your Version]
 **Server Population:** [Typical player count]
 **Error Message:** [Full console output]

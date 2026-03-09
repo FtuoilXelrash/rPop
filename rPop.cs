@@ -9,7 +9,7 @@ using Newtonsoft.Json;
 
 namespace Oxide.Plugins
 {
-    [Info("rPop", "Ftuoil Xelrash", "1.0.4")]
+    [Info("rPop", "Ftuoil Xelrash", "1.0.5")]
     [Description("Displays server population statistics and sends performance updates to Discord")]
 
     public class rPop : RustPlugin
@@ -773,14 +773,22 @@ namespace Oxide.Plugins
             });
         }
 
-        private void OnPlayerChat(BasePlayer player, string message, ConVar.Chat.ChatChannel channel)
+        private object OnPlayerChat(BasePlayer player, string message, ConVar.Chat.ChatChannel channel)
         {
-            if (player == null || string.IsNullOrEmpty(message)) return;
+            if (player == null || string.IsNullOrEmpty(message)) return null;
 
             if (message.ToLower() == "!pop")
+            {
                 HandlePopCommand(player);
+                return true;
+            }
             else if (message.ToLower() == "!wipe")
+            {
                 HandleWipeCommand(player);
+                return true;
+            }
+
+            return null;
         }
 
         #endregion

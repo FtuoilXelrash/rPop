@@ -47,8 +47,8 @@ DISCORD INTEGRATION:
 - Persistent message tracking - Single message that updates continuously
 
 IN-GAME FEATURES:
-- !pop / /pop command - Display comprehensive server stats to all players
-- !wipe / /wipe command - Display wipe date information to all players
+- !pop / /pop command - Silently display comprehensive server stats to all players (trigger not visible in chat)
+- !wipe / /wipe command - Silently display wipe date information to all players (trigger not visible in chat)
 - Configurable cooldown with intelligent time display
 - Rich chat formatting with colors and proper spacing
 - Automatic broadcasting to all online players
@@ -376,7 +376,7 @@ real gameplay setting.
 ===============================================================================
 
 WHEN REPORTING BUGS, INCLUDE:
-- Plugin Version: 1.0.4
+- Plugin Version: 1.0.5
 - Umod Version: [Your Version]
 - Server Population: [Typical player count]
 - Error Message: [Full console output]
