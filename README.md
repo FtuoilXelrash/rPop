@@ -2,7 +2,7 @@
 
 ![Rust](https://img.shields.io/badge/Game-Rust-orange)
 ![Umod](https://img.shields.io/badge/Framework-Umod-blue)
-![Version](https://img.shields.io/badge/Version-1.0.5-green)
+![Version](https://img.shields.io/badge/Version-1.0.6-green)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 
 A comprehensive Umod plugin for Rust servers that tracks and reports server performance statistics and population data to Discord in real-time with automatic message editing and instant population updates.

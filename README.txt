@@ -376,7 +376,7 @@ real gameplay setting.
 ===============================================================================
 
 WHEN REPORTING BUGS, INCLUDE:
-- Plugin Version: 1.0.5
+- Plugin Version: 1.0.6
 - Umod Version: [Your Version]
 - Server Population: [Typical player count]
 - Error Message: [Full console output]

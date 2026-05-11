@@ -9,7 +9,7 @@ using Newtonsoft.Json;
 
 namespace Oxide.Plugins
 {
-    [Info("rPop", "Ftuoil Xelrash", "1.0.5")]
+    [Info("Rust Population Statistics", "Ftuoil Xelrash", "1.0.6")]
     [Description("Displays server population statistics and sends performance updates to Discord")]
 
     public class rPop : RustPlugin
