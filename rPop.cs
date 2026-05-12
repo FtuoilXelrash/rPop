@@ -9,7 +9,7 @@ using Newtonsoft.Json;
 
 namespace Oxide.Plugins
 {
-    [Info("Rust Population Statistics", "Ftuoil Xelrash", "1.0.6")]
+    [Info("Rust Population Statistics", "Ftuoil Xelrash", "1.0.7")]
     [Description("Displays server population statistics and sends performance updates to Discord")]
 
     public class rPop : RustPlugin
@@ -917,13 +917,13 @@ namespace Oxide.Plugins
                 }
 
                 message += $"`📊 Population Data`\n";
-                message += $"🟢 **Players Online:** `{playerCount}/{maxPlayers}`";
+                message += $"⚔️ **Players Online:** `{playerCount}/{maxPlayers}`";
 
                 if (config.Settings.ShowPlayersJoining && (!config.Settings.HideZeroValues || joiningPlayers > 0))
-                    message += $"\n🟡 **Players In Queue:** `{joiningPlayers}`";
+                    message += $"\n⏳ **Players In Queue:** `{joiningPlayers}`";
 
                 if (config.Settings.ShowPlayersSleeping && (!config.Settings.HideZeroValues || sleepingPlayers > 0))
-                    message += $"\n🔴 **Players Sleeping:** `{sleepingPlayers}`";
+                    message += $"\n💤 **Players Sleeping:** `{sleepingPlayers}`";
 
                 if (config.Settings.ShowAdminsOnline && (!config.Settings.HideZeroValues || adminCount > 0))
                     message += $"\n👑 **Admins Online:** `{adminCount}`";

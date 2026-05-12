@@ -281,9 +281,9 @@ The plugin manages data in `oxide/data/rPop.json`:
 ✅ Server Status: Online
 
 📊 Population Data
-🟢 Players Online: 25/100
-🟡 Players In Queue: 2
-🔴 Players Sleeping: 15
+⚔️ Players Online: 25/100
+⏳ Players In Queue: 2
+💤 Players Sleeping: 15
 👑 Admins Online: 3
 📈 Today's Peak Players: 45
 📊 Monthly Peak Players: 67
