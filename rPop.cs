@@ -9,7 +9,7 @@ using Newtonsoft.Json;
 
 namespace Oxide.Plugins
 {
-    [Info("Rust Population Statistics", "Ftuoil Xelrash", "1.0.8")]
+    [Info("Rust Population Statistics", "Ftuoil Xelrash", "1.0.10")]
     [Description("Displays server population statistics and sends performance updates to Discord")]
 
     public class rPop : RustPlugin
@@ -20,6 +20,7 @@ namespace Oxide.Plugins
         private PluginData pluginData;
         private DateTime lastPopCommandTime = DateTime.MinValue;
         private DateTime lastWipeCommandTime = DateTime.MinValue;
+        private bool _wipedThisStartup = false;
         private Timer performanceTimer;
         private Timer inGameMessageTimer;
         private readonly Dictionary<string, DateTime> lastDiscordMessage = new Dictionary<string, DateTime>();
@@ -67,6 +68,8 @@ namespace Oxide.Plugins
             
             [JsonProperty("Enable Instant Population Updates")] public bool EnableInstantPopulationUpdates = true;
             [JsonProperty("Population Update Delay (seconds)")] public float PopulationUpdateDelay = 2f;
+            [JsonProperty("Show First Wipe Date")] public bool ShowFirstWipeDate = true;
+            [JsonProperty("Show Total Server Wipes")] public bool ShowTotalServerWipes = true;
         }
 
         public class PluginData
@@ -77,6 +80,8 @@ namespace Oxide.Plugins
             [JsonProperty("Last Reset Date")] public DateTime LastResetDate = DateTime.Today;
             [JsonProperty("Last Monthly Reset")] public DateTime LastMonthlyReset = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
             [JsonProperty("Discord Status Message ID")] public string StatusMessageId = null;
+            [JsonProperty("First Wipe Date")] public string FirstWipeDate = null;
+            [JsonProperty("Total Server Wipes")] public int TotalServerWipes = 0;
         }
 
         public class PopulationRecord
@@ -184,7 +189,9 @@ namespace Oxide.Plugins
                        settings.ContainsKey("Show Server Status") &&
                        settings.ContainsKey("Enable Instant Population Updates") &&
                        settings.ContainsKey("Population Update Delay (seconds)") &&
-                       settings.ContainsKey("Enable !wipe Command");
+                       settings.ContainsKey("Enable !wipe Command") &&
+                       settings.ContainsKey("Show First Wipe Date") &&
+                       settings.ContainsKey("Show Total Server Wipes");
 
                 if (!hasAll)
                 {
@@ -240,6 +247,10 @@ namespace Oxide.Plugins
                         config.Settings.PopulationUpdateDelay = 2f;
                     if (!settings.ContainsKey("Enable !wipe Command"))
                         config.Settings.EnableWipeCommand = true;
+                    if (!settings.ContainsKey("Show First Wipe Date"))
+                        config.Settings.ShowFirstWipeDate = true;
+                    if (!settings.ContainsKey("Show Total Server Wipes"))
+                        config.Settings.ShowTotalServerWipes = true;
                 }
 
                 return hasAll;
@@ -276,7 +287,15 @@ namespace Oxide.Plugins
                     pluginData = new PluginData();
                     SaveData();
                 }
-                
+
+                if (string.IsNullOrEmpty(pluginData.FirstWipeDate))
+                {
+                    pluginData.FirstWipeDate = DateTime.Today.ToString("MMM dd, yyyy");
+                    pluginData.TotalServerWipes = 1;
+                    SaveData();
+                    Puts("First wipe date initialized.");
+                }
+
                 // Check for daily reset
                 if (pluginData.LastResetDate.Date < DateTime.Today)
                 {
@@ -700,7 +719,14 @@ namespace Oxide.Plugins
                 Puts("Server marked as ONLINE");
                 
                 LoadData();
-                
+
+                if (_wipedThisStartup && pluginData.TotalServerWipes > 0)
+                {
+                    pluginData.TotalServerWipes++;
+                    SaveData();
+                    Puts($"New map wipe detected. Total server wipes: {pluginData.TotalServerWipes}");
+                }
+
                 try
                 {
                     string saveInfoPath = Path.Combine(World.SaveFolderName, $"player.blueprints.{Rust.Protocol.persistance}.db");
@@ -728,6 +754,11 @@ namespace Oxide.Plugins
             {
                 PrintError($"Error during initialization: {ex.Message}");
             }
+        }
+
+        private void OnNewSave(string filename)
+        {
+            _wipedThisStartup = true;
         }
 
         private void OnServerShutdown()
@@ -962,7 +993,7 @@ namespace Oxide.Plugins
                     message += $"\n🌐 **Network IO:** `{networkIO}`";
 
                 message += $"\n💾 **Memory Usage:** `{memoryUsed:N0} MB / {totalMemory:N0} MB`\n" +
-                          $"⚡ **Server FPS:** `{fps:F1}`\n";
+                          $"⚡ **Server FPS:** `{fps:F1}`";
 
                 message += $"\n\n`🔄 Wipe Data`\n" +
                           $"🗺️ **Last Wipe:** `{lastWipeDate}`";
@@ -972,6 +1003,12 @@ namespace Oxide.Plugins
 
                 if (config.Settings.ShowNextWipeDate)
                     message += $"\n📅 **Next Wipe:** `{nextWipeDate}`";
+
+                if (config.Settings.ShowFirstWipeDate && !string.IsNullOrEmpty(pluginData.FirstWipeDate))
+                    message += $"\n⭐ **First Wipe:** `{pluginData.FirstWipeDate}`";
+
+                if (config.Settings.ShowTotalServerWipes && !string.IsNullOrEmpty(pluginData.FirstWipeDate))
+                    message += $"\n🔥 **Total Server Wipes:** `{pluginData.TotalServerWipes}`";
 
                 int embedColor = _isOnline ? 65535 : 16711680;
                 string title = "Live Server Statistics";

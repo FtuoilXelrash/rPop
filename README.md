@@ -149,6 +149,8 @@ The plugin creates a comprehensive configuration file at `oxide/config/rPop.json
 | `Show Last Wipe Date` | `true` | Display last server wipe with time elapsed |
 | `Show Last Blueprint Wipe Date` | `true` | Show last blueprint wipe date |
 | `Show Next Wipe Date` | `true` | Show predicted next wipe (first Thursday) |
+| `Show First Wipe Date` | `true` | Show the date the plugin first started tracking wipes |
+| `Show Total Server Wipes` | `true` | Show total number of map wipes tracked by the plugin |
 | `Show Network IO` | `true` | Display network traffic statistics |
 | `Show Protocol` | `true` | Show server protocol version |
 | `Show Server Status` | `true` | Display online/offline status with emoji |
@@ -308,6 +310,8 @@ The plugin manages data in `oxide/data/rPop.json`:
 🗺️ Last Wipe: Jan 15, 2025 (2d ago)
 📘 Last BP Wipe: Jan 01, 2025 (16d ago)
 📅 Next Wipe: Feb 06, 2025 1:00 PM CST (in 21d 18h 30m)
+⭐ First Wipe: Jan 15, 2025
+🔥 Total Server Wipes: 1
 
 rPop Live Server Statistics V1.0.5 by Ftuoil Xelrash
 ```
