@@ -9,7 +9,7 @@ using Newtonsoft.Json;
 
 namespace Oxide.Plugins
 {
-    [Info("Rust Population Statistics", "Ftuoil Xelrash", "1.0.7")]
+    [Info("Rust Population Statistics", "Ftuoil Xelrash", "1.0.8")]
     [Description("Displays server population statistics and sends performance updates to Discord")]
 
     public class rPop : RustPlugin
@@ -964,7 +964,8 @@ namespace Oxide.Plugins
                 message += $"\n💾 **Memory Usage:** `{memoryUsed:N0} MB / {totalMemory:N0} MB`\n" +
                           $"⚡ **Server FPS:** `{fps:F1}`\n";
 
-                message += $"\n🗺️ **Last Wipe:** `{lastWipeDate}`";
+                message += $"\n\n`🔄 Wipe Data`\n" +
+                          $"🗺️ **Last Wipe:** `{lastWipeDate}`";
 
                 if (config.Settings.ShowLastBlueprintWipeDate)
                     message += $"\n📘 **Last BP Wipe:** `{lastBpWipeDate}`";

@@ -304,6 +304,7 @@ The plugin manages data in `oxide/data/rPop.json`:
 💾 Memory Usage: 8,192 MB / 16,384 MB
 ⚡ Server FPS: 58.3
 
+🔄 Wipe Data
 🗺️ Last Wipe: Jan 15, 2025 (2d ago)
 📘 Last BP Wipe: Jan 01, 2025 (16d ago)
 📅 Next Wipe: Feb 06, 2025 1:00 PM CST (in 21d 18h 30m)
