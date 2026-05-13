@@ -32,8 +32,10 @@ WORLD INFORMATION:
 - In-game time display with 12-hour format
 - World size and seed information
 - Last wipe date with intelligent time elapsed formatting
-- Blueprint wipe tracking with separate date tracking
+- Blueprint wipe tracking with years/months/days elapsed display
 - Next wipe prediction - Automatic first Thursday calculation
+- First wipe tracking - Records the date the plugin first started tracking
+- Total server wipes counter - Automatically increments on every map wipe
 - Server protocol version display
 - Timezone awareness - Automatic server timezone detection
 
@@ -117,6 +119,8 @@ CORE SETTINGS:
 - Command Cooldown (minutes): 5.0 - Cooldown for player commands (each command has its own independent timer)
 - Show Last Wipe Date: true/false - Display last server wipe
 - Show Next Wipe Date: true/false - Show predicted next wipe
+- Show First Wipe Date: true/false - Show date plugin first started tracking wipes
+- Show Total Server Wipes: true/false - Show total map wipes tracked by plugin
 - Show Server Status: true/false - Display online/offline status
 
 POPULATION DISPLAY:
@@ -376,7 +380,7 @@ real gameplay setting.
 ===============================================================================
 
 WHEN REPORTING BUGS, INCLUDE:
-- Plugin Version: 1.0.6
+- Plugin Version: 1.0.15
 - Umod Version: [Your Version]
 - Server Population: [Typical player count]
 - Error Message: [Full console output]

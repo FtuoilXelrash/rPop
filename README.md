@@ -2,7 +2,7 @@
 
 ![Rust](https://img.shields.io/badge/Game-Rust-orange)
 ![Umod](https://img.shields.io/badge/Framework-Umod-blue)
-![Version](https://img.shields.io/badge/Version-1.0.6-green)
+![Version](https://img.shields.io/badge/Version-1.0.15-green)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 
 A comprehensive Umod plugin for Rust servers that tracks and reports server performance statistics and population data to Discord in real-time with automatic message editing and instant population updates.
@@ -36,8 +36,10 @@ A comprehensive Umod plugin for Rust servers that tracks and reports server perf
 - **In-game time** display with 12-hour format
 - **World size** and **seed** information
 - **Last wipe date** with intelligent time elapsed formatting
-- **Blueprint wipe tracking** with separate date tracking
+- **Blueprint wipe tracking** with separate date tracking and years/months/days elapsed display
 - **Next wipe prediction** - Automatic first Thursday calculation with timezone support
+- **First wipe tracking** - Records the date the plugin first started tracking wipes
+- **Total server wipes counter** - Automatically increments on every detected map wipe
 - **Server protocol** version display (network.save.report format)
 - **Timezone awareness** - Automatic server timezone detection and display
 
@@ -96,6 +98,8 @@ The plugin creates a comprehensive configuration file at `oxide/config/rPop.json
     "Show Last Wipe Date": true,
     "Show Last Blueprint Wipe Date": true,
     "Show Next Wipe Date": true,
+    "Show First Wipe Date": true,
+    "Show Total Server Wipes": true,
     "Show Network IO": true,
     "Show Protocol": true,
     "Show Server Status": true
@@ -234,7 +238,9 @@ The plugin manages data in `oxide/data/rPop.json`:
   },
   "Last Reset Date": "2025-01-15T00:00:00",
   "Last Monthly Reset": "2025-01-01T00:00:00",
-  "Discord Status Message ID": "1234567890123456789"
+  "Discord Status Message ID": "1234567890123456789",
+  "First Wipe Date": "2023-10-25T00:00:00",
+  "Total Server Wipes": 14
 }
 ```
 
@@ -308,12 +314,12 @@ The plugin manages data in `oxide/data/rPop.json`:
 
 🔄 Wipe Data
 🗺️ Last Wipe: Jan 15, 2025 (2d ago)
-📘 Last BP Wipe: Jan 01, 2025 (16d ago)
 📅 Next Wipe: Feb 06, 2025 1:00 PM CST (in 21d 18h 30m)
-⭐ First Wipe: Jan 15, 2025
-🔥 Total Server Wipes: 1
+📘 Last BP Wipe: Jan 01, 2024 (1y 15d ago)
+⭐ First Wipe: Oct 25, 2023 (1y 2m 21d ago)
+🔥 Total Server Wipes: 14
 
-rPop Live Server Statistics V1.0.5 by Ftuoil Xelrash
+rPop Live Server Statistics V1.0.14 by Ftuoil Xelrash
 ```
 
 ## 🕐 Wipe Schedule System
@@ -561,7 +567,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ### Issue Template
 When reporting bugs, please include:
 ```
-**Plugin Version:** 1.0.5
+**Plugin Version:** 1.0.15
 **Umod Version:** [Your Version]
 **Server Population:** [Typical player count]
 **Error Message:** [Full console output]

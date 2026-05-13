@@ -9,7 +9,7 @@ using Newtonsoft.Json;
 
 namespace Oxide.Plugins
 {
-    [Info("Rust Population Statistics", "Ftuoil Xelrash", "1.0.10")]
+    [Info("Rust Population Statistics", "Ftuoil Xelrash", "1.0.15")]
     [Description("Displays server population statistics and sends performance updates to Discord")]
 
     public class rPop : RustPlugin
@@ -80,7 +80,7 @@ namespace Oxide.Plugins
             [JsonProperty("Last Reset Date")] public DateTime LastResetDate = DateTime.Today;
             [JsonProperty("Last Monthly Reset")] public DateTime LastMonthlyReset = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
             [JsonProperty("Discord Status Message ID")] public string StatusMessageId = null;
-            [JsonProperty("First Wipe Date")] public string FirstWipeDate = null;
+            [JsonProperty("First Wipe Date")] public DateTime FirstWipeDate = DateTime.MinValue;
             [JsonProperty("Total Server Wipes")] public int TotalServerWipes = 0;
         }
 
@@ -288,9 +288,9 @@ namespace Oxide.Plugins
                     SaveData();
                 }
 
-                if (string.IsNullOrEmpty(pluginData.FirstWipeDate))
+                if (pluginData.FirstWipeDate == DateTime.MinValue)
                 {
-                    pluginData.FirstWipeDate = DateTime.Today.ToString("MMM dd, yyyy");
+                    pluginData.FirstWipeDate = DateTime.Today;
                     pluginData.TotalServerWipes = 1;
                     SaveData();
                     Puts("First wipe date initialized.");
@@ -544,14 +544,15 @@ namespace Oxide.Plugins
                 {
                     return $"{blueprintWipe:MMM dd, yyyy} ({(int)timeSinceWipe.TotalHours}h ago)";
                 }
-                else if (timeSinceWipe.TotalDays < 7)
-                {
-                    return $"{blueprintWipe:MMM dd, yyyy} ({(int)timeSinceWipe.TotalDays}d ago)";
-                }
-                else
-                {
-                    return $"{blueprintWipe:MMM dd, yyyy} ({(int)timeSinceWipe.TotalDays}d ago)";
-                }
+                int totalDays = (int)timeSinceWipe.TotalDays;
+                int years  = totalDays / 365;
+                int months = (totalDays % 365) / 30;
+                int days   = (totalDays % 365) % 30;
+                string elapsedParts = "";
+                if (years  > 0) elapsedParts += $"{years}y ";
+                if (months > 0) elapsedParts += $"{months}m ";
+                if (days   > 0) elapsedParts += $"{days}d ";
+                return $"{blueprintWipe:MMM dd, yyyy} ({elapsedParts.TrimEnd()} ago)";
             }
             catch (Exception ex)
             {
@@ -864,17 +865,17 @@ namespace Oxide.Plugins
             int maxPlayers = ConVar.Server.maxplayers;
             int adminCount = BasePlayer.activePlayerList.Count(p => p.IsAdmin);
 
-            string statsMessage = $"<color=#FFD700><size=14>Population Stats:</size></color>\n" +
+            string statsMessage = $"<color=#00BFFF><size=14>Population Stats:</size></color>\n" +
                                 $"<color=#00FF00>Players Online:</color> <color=#FFFFFF>{playerCount}/{maxPlayers}</color>";
 
             if (config.Settings.ShowPlayersJoining && (!config.Settings.HideZeroValues || joiningPlayers > 0))
                 statsMessage += $"\n<color=#FFFF00>Players Joining:</color> <color=#FFFFFF>{joiningPlayers}</color>";
 
             if (config.Settings.ShowPlayersSleeping && (!config.Settings.HideZeroValues || sleepingPlayers > 0))
-                statsMessage += $"\n<color=#FF0000>Players Sleeping:</color> <color=#FFFFFF>{sleepingPlayers}</color>";
+                statsMessage += $"\n<color=#FFA500>Players Sleeping:</color> <color=#FFFFFF>{sleepingPlayers}</color>";
 
             if (config.Settings.ShowAdminsOnline && (!config.Settings.HideZeroValues || adminCount > 0))
-                statsMessage += $"\n<color=#FFB6C1>Admins Online:</color> <color=#FFFFFF>{adminCount}</color>";
+                statsMessage += $"\n<color=#FF0000>Admins Online:</color> <color=#FFFFFF>{adminCount}</color>";
 
             foreach (var onlinePlayer in BasePlayer.activePlayerList)
                 onlinePlayer?.ChatMessage(statsMessage);
@@ -900,16 +901,16 @@ namespace Oxide.Plugins
 
             lastWipeCommandTime = now;
 
-            string wipeMessage = $"<color=#FFD700><size=14>Wipe Information:</size></color>";
+            string wipeMessage = $"<color=#00BFFF><size=14>Wipe Information:</size></color>";
 
             if (config.Settings.ShowLastWipeDate)
-                wipeMessage += $"\n<color=#FFA500>Last Wipe:</color> <color=#FFFFFF>{GetLastWipeDate()}</color>";
+                wipeMessage += $"\n<color=#00FF00>Current Wipe:</color> <color=#FFFFFF>{GetLastWipeDate()}</color>";
+
+            if (config.Settings.ShowNextWipeDate)
+                wipeMessage += $"\n<color=#FFFF00>Next Wipe:</color> <color=#FFFFFF>{GetFormattedNextWipeDate()}</color>";
 
             if (config.Settings.ShowLastBlueprintWipeDate)
                 wipeMessage += $"\n<color=#ADD8E6>Last BP Wipe:</color> <color=#FFFFFF>{GetFormattedBlueprintWipeDate()}</color>";
-
-            if (config.Settings.ShowNextWipeDate)
-                wipeMessage += $"\n<color=#00BFFF>Next Wipe:</color> <color=#FFFFFF>{GetFormattedNextWipeDate()}</color>";
 
             foreach (var onlinePlayer in BasePlayer.activePlayerList)
                 onlinePlayer?.ChatMessage(wipeMessage);
@@ -998,16 +999,36 @@ namespace Oxide.Plugins
                 message += $"\n\n`🔄 Wipe Data`\n" +
                           $"🗺️ **Last Wipe:** `{lastWipeDate}`";
 
-                if (config.Settings.ShowLastBlueprintWipeDate)
-                    message += $"\n📘 **Last BP Wipe:** `{lastBpWipeDate}`";
-
                 if (config.Settings.ShowNextWipeDate)
                     message += $"\n📅 **Next Wipe:** `{nextWipeDate}`";
 
-                if (config.Settings.ShowFirstWipeDate && !string.IsNullOrEmpty(pluginData.FirstWipeDate))
-                    message += $"\n⭐ **First Wipe:** `{pluginData.FirstWipeDate}`";
+                if (config.Settings.ShowLastBlueprintWipeDate)
+                    message += $"\n📘 **Last BP Wipe:** `{lastBpWipeDate}`";
 
-                if (config.Settings.ShowTotalServerWipes && !string.IsNullOrEmpty(pluginData.FirstWipeDate))
+                if (config.Settings.ShowFirstWipeDate && pluginData.FirstWipeDate != DateTime.MinValue)
+                {
+                    TimeSpan sinceFirstWipe = DateTime.Now - pluginData.FirstWipeDate;
+                    string elapsed;
+                    if (sinceFirstWipe.TotalDays < 1)
+                    {
+                        elapsed = $"{(int)sinceFirstWipe.TotalHours}h ago";
+                    }
+                    else
+                    {
+                        int totalDays = (int)sinceFirstWipe.TotalDays;
+                        int years  = totalDays / 365;
+                        int months = (totalDays % 365) / 30;
+                        int days   = (totalDays % 365) % 30;
+                        string elapsedParts = "";
+                        if (years  > 0) elapsedParts += $"{years}y ";
+                        if (months > 0) elapsedParts += $"{months}m ";
+                        if (days   > 0) elapsedParts += $"{days}d ";
+                        elapsed = elapsedParts.TrimEnd() + " ago";
+                    }
+                    message += $"\n⭐ **First Wipe:** `{pluginData.FirstWipeDate:MMM dd, yyyy} ({elapsed})`";
+                }
+
+                if (config.Settings.ShowTotalServerWipes && pluginData.FirstWipeDate != DateTime.MinValue)
                     message += $"\n🔥 **Total Server Wipes:** `{pluginData.TotalServerWipes}`";
 
                 int embedColor = _isOnline ? 65535 : 16711680;
