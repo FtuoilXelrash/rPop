@@ -9,7 +9,7 @@ using Newtonsoft.Json;
 
 namespace Oxide.Plugins
 {
-    [Info("Rust Population Statistics", "Ftuoil Xelrash", "1.0.15")]
+    [Info("Rust Population Statistics", "Ftuoil Xelrash", "1.0.25")]
     [Description("Displays server population statistics and sends performance updates to Discord")]
 
     public class rPop : RustPlugin
@@ -70,6 +70,9 @@ namespace Oxide.Plugins
             [JsonProperty("Population Update Delay (seconds)")] public float PopulationUpdateDelay = 2f;
             [JsonProperty("Show First Wipe Date")] public bool ShowFirstWipeDate = true;
             [JsonProperty("Show Total Server Wipes")] public bool ShowTotalServerWipes = true;
+            [JsonProperty("Show Total Players This Wipe")] public bool ShowTotalPlayersThisWipe = true;
+            [JsonProperty("Show Returning Players This Wipe")] public bool ShowReturningPlayersThisWipe = true;
+            [JsonProperty("Show New Players This Wipe")] public bool ShowNewPlayersThisWipe = true;
         }
 
         public class PluginData
@@ -82,6 +85,9 @@ namespace Oxide.Plugins
             [JsonProperty("Discord Status Message ID")] public string StatusMessageId = null;
             [JsonProperty("First Wipe Date")] public DateTime FirstWipeDate = DateTime.MinValue;
             [JsonProperty("Total Server Wipes")] public int TotalServerWipes = 0;
+            [JsonProperty("Wipe Steam IDs")] public HashSet<string> WipeSteamIDs = new HashSet<string>();
+            [JsonProperty("Players Returned This Wipe")] public int PlayersReturnedThisWipe = 0;
+            [JsonProperty("Players New This Wipe")] public int PlayersNewThisWipe = 0;
         }
 
         public class PopulationRecord
@@ -191,7 +197,10 @@ namespace Oxide.Plugins
                        settings.ContainsKey("Population Update Delay (seconds)") &&
                        settings.ContainsKey("Enable !wipe Command") &&
                        settings.ContainsKey("Show First Wipe Date") &&
-                       settings.ContainsKey("Show Total Server Wipes");
+                       settings.ContainsKey("Show Total Server Wipes") &&
+                       settings.ContainsKey("Show Total Players This Wipe") &&
+                       settings.ContainsKey("Show Returning Players This Wipe") &&
+                       settings.ContainsKey("Show New Players This Wipe");
 
                 if (!hasAll)
                 {
@@ -251,6 +260,12 @@ namespace Oxide.Plugins
                         config.Settings.ShowFirstWipeDate = true;
                     if (!settings.ContainsKey("Show Total Server Wipes"))
                         config.Settings.ShowTotalServerWipes = true;
+                    if (!settings.ContainsKey("Show Total Players This Wipe"))
+                        config.Settings.ShowTotalPlayersThisWipe = true;
+                    if (!settings.ContainsKey("Show Returning Players This Wipe"))
+                        config.Settings.ShowReturningPlayersThisWipe = true;
+                    if (!settings.ContainsKey("Show New Players This Wipe"))
+                        config.Settings.ShowNewPlayersThisWipe = true;
                 }
 
                 return hasAll;
@@ -451,9 +466,23 @@ namespace Oxide.Plugins
 
         private bool IsValidSteamID(string steamId)
         {
-            return !string.IsNullOrEmpty(steamId) && 
-                   steamId.Length >= 7 && 
+            return !string.IsNullOrEmpty(steamId) &&
+                   steamId.Length >= 7 &&
                    steamId.All(char.IsDigit);
+        }
+
+        private void TrackWipePlayer(string steamId)
+        {
+            if (string.IsNullOrEmpty(steamId) || pluginData.WipeSteamIDs.Contains(steamId)) return;
+
+            pluginData.WipeSteamIDs.Add(steamId);
+
+            if (Directory.Exists(Path.Combine("userdata", steamId)))
+                pluginData.PlayersReturnedThisWipe++;
+            else
+                pluginData.PlayersNewThisWipe++;
+
+            SaveData();
         }
 
         #endregion
@@ -724,6 +753,9 @@ namespace Oxide.Plugins
                 if (_wipedThisStartup && pluginData.TotalServerWipes > 0)
                 {
                     pluginData.TotalServerWipes++;
+                    pluginData.WipeSteamIDs.Clear();
+                    pluginData.PlayersReturnedThisWipe = 0;
+                    pluginData.PlayersNewThisWipe = 0;
                     SaveData();
                     Puts($"New map wipe detected. Total server wipes: {pluginData.TotalServerWipes}");
                 }
@@ -789,7 +821,10 @@ namespace Oxide.Plugins
 
         private void OnPlayerConnected(BasePlayer player)
         {
-            timer.Once(1f, () => 
+            if (player?.UserIDString != null)
+                TrackWipePlayer(player.UserIDString);
+
+            timer.Once(1f, () =>
             {
                 UpdatePopulationRecords();
                 TriggerInstantPopulationUpdate();
@@ -977,6 +1012,15 @@ namespace Oxide.Plugins
 
                 if (config.Settings.ShowAverageConnectionTime && playerCount > 0)
                     message += $"\n⏱️ **Average Active Session Time:** `{averageConnectionTime}`";
+
+                if (config.Settings.ShowTotalPlayersThisWipe && (!config.Settings.HideZeroValues || pluginData.WipeSteamIDs.Count > 0))
+                    message += $"\n📋 **Total Players This Wipe:** `{pluginData.WipeSteamIDs.Count:N0}`";
+
+                if (config.Settings.ShowReturningPlayersThisWipe && (!config.Settings.HideZeroValues || pluginData.PlayersReturnedThisWipe > 0))
+                    message += $"\n🔁 **Returning Players This Wipe:** `{pluginData.PlayersReturnedThisWipe:N0}`";
+
+                if (config.Settings.ShowNewPlayersThisWipe && (!config.Settings.HideZeroValues || pluginData.PlayersNewThisWipe > 0))
+                    message += $"\n🆕 **New Players This Wipe:** `{pluginData.PlayersNewThisWipe:N0}`";
 
                 message += $"\n\n`🌍 World Data`\n" +
                           $"🕒 **In-Game Time:** `{GetInGameTime()}`\n" +
