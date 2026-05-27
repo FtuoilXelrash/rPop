@@ -19,6 +19,7 @@ POPULATION TRACKING:
 - Session analytics - Average connection time for active players
 - Instant updates - Discord updates immediately when players join/leave
 - Smart data management - Automatic daily and monthly record resets
+- Wipe player tracking - Total, Returning, and New player counts per wipe (requires Enable Player Tabulation)
 
 SERVER PERFORMANCE MONITORING:
 - Server FPS monitoring with real-time updates
@@ -131,6 +132,10 @@ POPULATION DISPLAY:
 - Show Population Records: true/false - Display peak player records
 - Show Total Players Ever: true/false - Show lifetime unique players
 - Show Average Connection Time: true/false - Display session times
+- Enable Player Tabulation: true/false - Master switch for wipe player counting (default false); when disabled shows "Disabled" in Discord
+- Show Total Players This Wipe: true/false - Display unique players connected since last wipe
+- Show Returning Players This Wipe: true/false - Display count of returning players this wipe
+- Show New Players This Wipe: true/false - Display count of first-time players this wipe
 
 DISCORD INTEGRATION:
 - Discord Webhook URL: "" - Your Discord webhook URL
@@ -380,7 +385,7 @@ real gameplay setting.
 ===============================================================================
 
 WHEN REPORTING BUGS, INCLUDE:
-- Plugin Version: 1.0.15
+- Plugin Version: 1.0.32
 - Umod Version: [Your Version]
 - Server Population: [Typical player count]
 - Error Message: [Full console output]

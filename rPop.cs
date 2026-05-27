@@ -9,7 +9,7 @@ using Newtonsoft.Json;
 
 namespace Oxide.Plugins
 {
-    [Info("Rust Population Statistics", "Ftuoil Xelrash", "1.0.32")]
+    [Info("Rust Population Statistics", "Ftuoil Xelrash", "1.0.35")]
     [Description("Displays server population statistics and sends performance updates to Discord")]
 
     public class rPop : RustPlugin
@@ -989,7 +989,7 @@ namespace Oxide.Plugins
                     message += $"{GetServerStatusEmoji()} **Server Status:** `{GetServerStatusText()}`\n\n";
                 }
 
-                message += $"`📊 Population Data`\n";
+                message += $"**📊 Population Data**\n";
                 message += $"⚔️ **Players Online:** `{playerCount}/{maxPlayers}`";
 
                 if (config.Settings.ShowPlayersJoining && (!config.Settings.HideZeroValues || joiningPlayers > 0))
@@ -1052,7 +1052,7 @@ namespace Oxide.Plugins
                         message += $"\n🆕 **New Players This Wipe:** `Disabled`";
                 }
 
-                message += $"\n\n`🌍 World Data`\n" +
+                message += $"\n\n**🌍 World Data**\n" +
                           $"🕒 **In-Game Time:** `{GetInGameTime()}`\n" +
                           $"🌍 **World Size:** `{ConVar.Server.worldsize}`\n" +
                           $"🌱 **Seed:** `{ConVar.Server.seed}`\n" +
@@ -1061,7 +1061,7 @@ namespace Oxide.Plugins
                 if (config.Settings.ShowProtocol)
                     message += $"\n🔗 **Protocol:** `{GetServerProtocol()}`";
 
-                message += $"\n\n`🖥️ Server Data`\n" +
+                message += $"\n\n**🖥️ Server Data**\n" +
                           $"🕐 **Server Online For:** `{uptime}`";
 
                 if (config.Settings.ShowNetworkIO)
@@ -1070,7 +1070,7 @@ namespace Oxide.Plugins
                 message += $"\n💾 **Memory Usage:** `{memoryUsed:N0} MB / {totalMemory:N0} MB`\n" +
                           $"⚡ **Server FPS:** `{fps:F1}`";
 
-                message += $"\n\n`🔄 Wipe Data`\n" +
+                message += $"\n\n**🔄 Wipe Data**\n" +
                           $"🗺️ **Last Wipe:** `{lastWipeDate}`";
 
                 if (config.Settings.ShowNextWipeDate)
