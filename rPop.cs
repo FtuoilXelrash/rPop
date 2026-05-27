@@ -9,7 +9,7 @@ using Newtonsoft.Json;
 
 namespace Oxide.Plugins
 {
-    [Info("Rust Population Statistics", "Ftuoil Xelrash", "1.0.25")]
+    [Info("Rust Population Statistics", "Ftuoil Xelrash", "1.0.32")]
     [Description("Displays server population statistics and sends performance updates to Discord")]
 
     public class rPop : RustPlugin
@@ -73,6 +73,7 @@ namespace Oxide.Plugins
             [JsonProperty("Show Total Players This Wipe")] public bool ShowTotalPlayersThisWipe = true;
             [JsonProperty("Show Returning Players This Wipe")] public bool ShowReturningPlayersThisWipe = true;
             [JsonProperty("Show New Players This Wipe")] public bool ShowNewPlayersThisWipe = true;
+            [JsonProperty("Enable Player Tabulation")] public bool EnablePlayerTabulation = false;
         }
 
         public class PluginData
@@ -200,7 +201,8 @@ namespace Oxide.Plugins
                        settings.ContainsKey("Show Total Server Wipes") &&
                        settings.ContainsKey("Show Total Players This Wipe") &&
                        settings.ContainsKey("Show Returning Players This Wipe") &&
-                       settings.ContainsKey("Show New Players This Wipe");
+                       settings.ContainsKey("Show New Players This Wipe") &&
+                       settings.ContainsKey("Enable Player Tabulation");
 
                 if (!hasAll)
                 {
@@ -266,6 +268,8 @@ namespace Oxide.Plugins
                         config.Settings.ShowReturningPlayersThisWipe = true;
                     if (!settings.ContainsKey("Show New Players This Wipe"))
                         config.Settings.ShowNewPlayersThisWipe = true;
+                    if (!settings.ContainsKey("Enable Player Tabulation"))
+                        config.Settings.EnablePlayerTabulation = false;
                 }
 
                 return hasAll;
@@ -418,12 +422,14 @@ namespace Oxide.Plugins
                 double averageSeconds = totalSeconds / validPlayerCount;
                 TimeSpan timeSpan = TimeSpan.FromSeconds(averageSeconds);
                 
-                if (timeSpan.TotalHours >= 1)
-                    return $"{(int)timeSpan.TotalHours:D2}:{timeSpan.Minutes:D2}:{timeSpan.Seconds:D2}";
+                if (timeSpan.TotalDays >= 1)
+                    return $"{(int)timeSpan.TotalDays} days, {timeSpan.Hours} hours, {timeSpan.Minutes} minutes";
+                else if (timeSpan.TotalHours >= 1)
+                    return $"{timeSpan.Hours} hours, {timeSpan.Minutes} minutes";
                 else if (timeSpan.TotalMinutes >= 1)
-                    return $"{timeSpan.Minutes}:{timeSpan.Seconds:D2} min";
+                    return $"{timeSpan.Minutes} minutes, {timeSpan.Seconds} seconds";
                 else
-                    return $"{timeSpan.Seconds} sec";
+                    return $"{timeSpan.Seconds} seconds";
             }
             catch (Exception ex)
             {
@@ -821,7 +827,7 @@ namespace Oxide.Plugins
 
         private void OnPlayerConnected(BasePlayer player)
         {
-            if (player?.UserIDString != null)
+            if (player?.UserIDString != null && config.Settings.EnablePlayerTabulation)
                 TrackWipePlayer(player.UserIDString);
 
             timer.Once(1f, () =>
@@ -995,6 +1001,9 @@ namespace Oxide.Plugins
                 if (config.Settings.ShowAdminsOnline && (!config.Settings.HideZeroValues || adminCount > 0))
                     message += $"\n👑 **Admins Online:** `{adminCount}`";
 
+                if (config.Settings.ShowAverageConnectionTime && playerCount > 0)
+                    message += $"\n⏱️ **Average Active Session Time:** `{averageConnectionTime}`";
+
                 if (config.Settings.ShowPopulationRecords)
                 {
                     if (pluginData.TodayHigh.Count > 0)
@@ -1010,17 +1019,38 @@ namespace Oxide.Plugins
                 if (config.Settings.ShowTotalPlayersEver)
                     message += $"\n🏢 **Total Server Players:** `{totalPlayersEver:N0}`";
 
-                if (config.Settings.ShowAverageConnectionTime && playerCount > 0)
-                    message += $"\n⏱️ **Average Active Session Time:** `{averageConnectionTime}`";
+                if (config.Settings.ShowTotalPlayersThisWipe)
+                {
+                    if (config.Settings.EnablePlayerTabulation)
+                    {
+                        if (!config.Settings.HideZeroValues || pluginData.WipeSteamIDs.Count > 0)
+                            message += $"\n📋 **Total Players This Wipe:** `{pluginData.WipeSteamIDs.Count:N0}`";
+                    }
+                    else
+                        message += $"\n📋 **Total Players This Wipe:** `Disabled`";
+                }
 
-                if (config.Settings.ShowTotalPlayersThisWipe && (!config.Settings.HideZeroValues || pluginData.WipeSteamIDs.Count > 0))
-                    message += $"\n📋 **Total Players This Wipe:** `{pluginData.WipeSteamIDs.Count:N0}`";
+                if (config.Settings.ShowReturningPlayersThisWipe)
+                {
+                    if (config.Settings.EnablePlayerTabulation)
+                    {
+                        if (!config.Settings.HideZeroValues || pluginData.PlayersReturnedThisWipe > 0)
+                            message += $"\n🔁 **Returning Players This Wipe:** `{pluginData.PlayersReturnedThisWipe:N0}`";
+                    }
+                    else
+                        message += $"\n🔁 **Returning Players This Wipe:** `Disabled`";
+                }
 
-                if (config.Settings.ShowReturningPlayersThisWipe && (!config.Settings.HideZeroValues || pluginData.PlayersReturnedThisWipe > 0))
-                    message += $"\n🔁 **Returning Players This Wipe:** `{pluginData.PlayersReturnedThisWipe:N0}`";
-
-                if (config.Settings.ShowNewPlayersThisWipe && (!config.Settings.HideZeroValues || pluginData.PlayersNewThisWipe > 0))
-                    message += $"\n🆕 **New Players This Wipe:** `{pluginData.PlayersNewThisWipe:N0}`";
+                if (config.Settings.ShowNewPlayersThisWipe)
+                {
+                    if (config.Settings.EnablePlayerTabulation)
+                    {
+                        if (!config.Settings.HideZeroValues || pluginData.PlayersNewThisWipe > 0)
+                            message += $"\n🆕 **New Players This Wipe:** `{pluginData.PlayersNewThisWipe:N0}`";
+                    }
+                    else
+                        message += $"\n🆕 **New Players This Wipe:** `Disabled`";
+                }
 
                 message += $"\n\n`🌍 World Data`\n" +
                           $"🕒 **In-Game Time:** `{GetInGameTime()}`\n" +
