@@ -2,7 +2,7 @@
 
 ![Rust](https://img.shields.io/badge/Game-Rust-orange)
 ![Umod](https://img.shields.io/badge/Framework-Umod-blue)
-![Version](https://img.shields.io/badge/Version-1.0.15-green)
+![Version](https://img.shields.io/badge/Version-1.0.32-green)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 
 A comprehensive Umod plugin for Rust servers that tracks and reports server performance statistics and population data to Discord in real-time with automatic message editing and instant population updates.
@@ -23,6 +23,7 @@ A comprehensive Umod plugin for Rust servers that tracks and reports server perf
 - **Session analytics** - Average connection time for currently active players
 - **Instant updates** - Discord updates immediately when players join/leave
 - **Smart data management** - Automatic daily and monthly record resets
+- **Wipe player tracking** - Total, Returning, and New player counts per wipe cycle (requires `Enable Player Tabulation`)
 
 ### 🖥️ Server Performance Monitoring
 - **Server FPS** monitoring with real-time updates
@@ -117,6 +118,10 @@ The plugin creates a comprehensive configuration file at `oxide/config/rPop.json
 | `Show Population Records` | `true` | Display daily/monthly/all-time peaks with dates |
 | `Show Total Players Ever` | `true` | Show lifetime unique player count from userdata |
 | `Show Average Connection Time` | `true` | Display average session time for active players |
+| `Enable Player Tabulation` | `false` | Master switch for wipe player counting; when disabled, shows `Disabled` instead of counts |
+| `Show Total Players This Wipe` | `true` | Display total unique players connected since last wipe |
+| `Show Returning Players This Wipe` | `true` | Display count of players who have played before |
+| `Show New Players This Wipe` | `true` | Display count of first-time players this wipe |
 
 ### Discord Integration Settings
 | Option | Default | Description |
@@ -240,7 +245,10 @@ The plugin manages data in `oxide/data/rPop.json`:
   "Last Monthly Reset": "2025-01-01T00:00:00",
   "Discord Status Message ID": "1234567890123456789",
   "First Wipe Date": "2023-10-25T00:00:00",
-  "Total Server Wipes": 14
+  "Total Server Wipes": 14,
+  "Wipe Steam IDs": ["76561198012345678", "76561198087654321"],
+  "Players Returned This Wipe": 198,
+  "Players New This Wipe": 114
 }
 ```
 
@@ -293,11 +301,14 @@ The plugin manages data in `oxide/data/rPop.json`:
 ⏳ Players In Queue: 2
 💤 Players Sleeping: 15
 👑 Admins Online: 3
+⏱️ Average Active Session Time: 2 hours, 45 minutes
 📈 Today's Peak Players: 45
 📊 Monthly Peak Players: 67
 🏆 All-Time Peak Players: 89
 🏢 Total Server Players: 1,247
-⏱️ Average Active Session Time: 2:45:30
+📋 Total Players This Wipe: 312
+🔁 Returning Players This Wipe: 198
+🆕 New Players This Wipe: 114
 
 🌍 World Data
 🕒 In-Game Time: 2:30 PM
@@ -319,7 +330,7 @@ The plugin manages data in `oxide/data/rPop.json`:
 ⭐ First Wipe: Oct 25, 2023 (1y 2m 21d ago)
 🔥 Total Server Wipes: 14
 
-rPop Live Server Statistics V1.0.14 by Ftuoil Xelrash
+rPop Live Server Statistics V1.0.32 by Ftuoil Xelrash
 ```
 
 ## 🕐 Wipe Schedule System
@@ -567,7 +578,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ### Issue Template
 When reporting bugs, please include:
 ```
-**Plugin Version:** 1.0.15
+**Plugin Version:** 1.0.32
 **Umod Version:** [Your Version]
 **Server Population:** [Typical player count]
 **Error Message:** [Full console output]
