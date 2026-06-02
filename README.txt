@@ -19,7 +19,7 @@ POPULATION TRACKING:
 - Session analytics - Average connection time for active players
 - Instant updates - Discord updates immediately when players join/leave
 - Smart data management - Automatic daily and monthly record resets
-- Wipe player tracking - Total, Returning, and New player counts per wipe (requires Enable Player Tabulation)
+- Wipe player tracking - Total, Returning, and New player counts per wipe with reliable all-time player history
 
 SERVER PERFORMANCE MONITORING:
 - Server FPS monitoring with real-time updates
@@ -74,7 +74,8 @@ INSTALLATION STEPS:
 
 The plugin will create:
 - Configuration: oxide/config/rPop.json
-- Data storage: oxide/data/rPop.json
+- Main data: oxide/data/rPop/rPop.json
+- All-time player list: oxide/data/rPop/rPop_alltime.json
 
 ===============================================================================
                               DISCORD SETUP GUIDE
@@ -132,7 +133,7 @@ POPULATION DISPLAY:
 - Show Population Records: true/false - Display peak player records
 - Show Total Players Ever: true/false - Show lifetime unique players
 - Show Average Connection Time: true/false - Display session times
-- Enable Player Tabulation: true/false - Master switch for wipe player counting (default false); when disabled shows "Disabled" in Discord
+- Enable Player Tabulation: true/false - Legacy option; wipe player tracking now always runs regardless of this setting
 - Show Total Players This Wipe: true/false - Display unique players connected since last wipe
 - Show Returning Players This Wipe: true/false - Display count of returning players this wipe
 - Show New Players This Wipe: true/false - Display count of first-time players this wipe
@@ -178,6 +179,8 @@ rpop.test - Show current statistics and send test Discord message
 rpop.performance - Force immediate Discord performance update
 rpop.resetdata - Reset all population records and statistics
 rpop.resetmessage - Reset Discord message ID (creates new status message)
+rpop.resetwipedata - Clear wipe player counts (Returning/New/Total) without affecting
+                     all-time player list; players re-classified on next connect
 rpop.status - Show detailed server status and timer information
 rpop.forceconfig - Regenerate configuration file with defaults
 
@@ -319,14 +322,22 @@ MINIMAL DISCORD SETUP (bandwidth-conscious):
 ===============================================================================
 
 AUTOMATIC DATA FILES:
-The plugin manages data in oxide/data/rPop.json
+The plugin manages two data files in oxide/data/rPop/:
+- rPop/rPop.json       - Main plugin data (population records, wipe counts)
+- rPop/rPop_alltime.json - Persistent all-time player list (never wiped)
 
 SMART RESET SYSTEM:
 - Daily Reset: Population records reset at midnight server time
 - Monthly Reset: Monthly records reset on the 1st of each month
-- Persistent Storage: All-time records and total player counts preserved
+- Wipe Reset: WipeSteamIDs and Returning/New counters clear on map wipe;
+              AllTimeSteamIDs is preserved across all wipes
+- Persistent Storage: All-time records, total player counts, and all-time
+                      player list are preserved
 
 PLAYER TRACKING:
+- Returning Players: Identified via persistent AllTimeSteamIDs list; accurate
+                     for all players regardless of in-game features used
+- New Players: Not in AllTimeSteamIDs on connect; added immediately
 - Total Players: Counted from valid Steam ID folders in userdata/
 - Session Times: Calculated from active connection duration
 - Steam ID Validation: Ensures accurate counting
@@ -385,7 +396,7 @@ real gameplay setting.
 ===============================================================================
 
 WHEN REPORTING BUGS, INCLUDE:
-- Plugin Version: 1.0.32
+- Plugin Version: 1.0.40
 - Umod Version: [Your Version]
 - Server Population: [Typical player count]
 - Error Message: [Full console output]

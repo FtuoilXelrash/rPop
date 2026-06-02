@@ -9,7 +9,7 @@ using Newtonsoft.Json;
 
 namespace Oxide.Plugins
 {
-    [Info("Rust Population Statistics", "Ftuoil Xelrash", "1.0.38")]
+    [Info("Rust Population Statistics", "Ftuoil Xelrash", "1.0.40")]
     [Description("Displays server population statistics and sends performance updates to Discord")]
 
     public class rPop : RustPlugin
@@ -1576,6 +1576,16 @@ namespace Oxide.Plugins
             pluginData.StatusMessageId = null;
             SaveData();
             Puts("Discord status message ID has been reset. A new message will be created on next update.");
+        }
+
+        [ConsoleCommand("rpop.resetwipedata")]
+        private void RPopResetWipeDataCommand(ConsoleSystem.Arg arg)
+        {
+            pluginData.WipeSteamIDs.Clear();
+            pluginData.PlayersReturnedThisWipe = 0;
+            pluginData.PlayersNewThisWipe = 0;
+            SaveData();
+            Puts("Wipe player counts reset. All-time player list preserved. Players will be re-classified on next connect.");
         }
 
         [ConsoleCommand("rpop.status")]

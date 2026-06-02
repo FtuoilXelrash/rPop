@@ -2,7 +2,7 @@
 
 ![Rust](https://img.shields.io/badge/Game-Rust-orange)
 ![Umod](https://img.shields.io/badge/Framework-Umod-blue)
-![Version](https://img.shields.io/badge/Version-1.0.32-green)
+![Version](https://img.shields.io/badge/Version-1.0.40-green)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 
 A comprehensive Umod plugin for Rust servers that tracks and reports server performance statistics and population data to Discord in real-time with automatic message editing and instant population updates.
@@ -23,7 +23,7 @@ A comprehensive Umod plugin for Rust servers that tracks and reports server perf
 - **Session analytics** - Average connection time for currently active players
 - **Instant updates** - Discord updates immediately when players join/leave
 - **Smart data management** - Automatic daily and monthly record resets
-- **Wipe player tracking** - Total, Returning, and New player counts per wipe cycle (requires `Enable Player Tabulation`)
+- **Wipe player tracking** - Total, Returning, and New player counts per wipe cycle with reliable all-time player history
 
 ### 🖥️ Server Performance Monitoring
 - **Server FPS** monitoring with real-time updates
@@ -118,7 +118,7 @@ The plugin creates a comprehensive configuration file at `oxide/config/rPop.json
 | `Show Population Records` | `true` | Display daily/monthly/all-time peaks with dates |
 | `Show Total Players Ever` | `true` | Show lifetime unique player count from userdata |
 | `Show Average Connection Time` | `true` | Display average session time for active players |
-| `Enable Player Tabulation` | `false` | Master switch for wipe player counting; when disabled, shows `Disabled` instead of counts |
+| `Enable Player Tabulation` | `false` | Legacy option — wipe player tracking now always runs; this setting no longer gates tracking |
 | `Show Total Players This Wipe` | `true` | Display total unique players connected since last wipe |
 | `Show Returning Players This Wipe` | `true` | Display count of players who have played before |
 | `Show New Players This Wipe` | `true` | Display count of first-time players this wipe |
@@ -182,6 +182,7 @@ The plugin creates a comprehensive configuration file at `oxide/config/rPop.json
 | `rpop.performance` | Force immediate Discord performance update | Admin |
 | `rpop.resetdata` | Reset all population records and statistics | Admin |
 | `rpop.resetmessage` | Reset Discord message ID (creates new status message) | Admin |
+| `rpop.resetwipedata` | Clear wipe player counts (Returning/New/Total) without affecting all-time player list; players re-classified on next connect | Admin |
 | `rpop.status` | Show detailed server status and timer information | Admin |
 | `rpop.forceconfig` | Regenerate configuration file with all default options | Admin |
 
@@ -225,8 +226,9 @@ The plugin automatically creates a **single Discord message** that updates conti
 ## 📊 Data Management
 
 ### Automatic Data Files
-The plugin manages data in `oxide/data/rPop.json`:
+The plugin manages two data files in `oxide/data/rPop/`:
 
+**`rPop/rPop.json`** — main plugin data:
 ```json
 {
   "Today High Population": {
@@ -252,13 +254,23 @@ The plugin manages data in `oxide/data/rPop.json`:
 }
 ```
 
+**`rPop/rPop_alltime.json`** — persistent all-time player list (never wiped):
+```json
+{
+  "All Time Steam IDs": ["76561198012345678", "76561198087654321"]
+}
+```
+
 ### Smart Reset System
 - **Daily Reset:** Population records reset at midnight server time
 - **Monthly Reset:** Monthly records reset on the 1st of each month
-- **Persistent Storage:** All-time records and total player counts are preserved
+- **Wipe Reset:** `WipeSteamIDs` and Returning/New counters clear on map wipe; `AllTimeSteamIDs` is preserved
+- **Persistent Storage:** All-time records, total player counts, and all-time player list are preserved across wipes
 
 ### Player Tracking
-- **Total Players:** Counted from valid Steam ID folders in `userdata/`
+- **Returning Players:** Identified by checking the persistent `AllTimeSteamIDs` list — accurate for every player regardless of in-game features used
+- **New Players:** Not present in `AllTimeSteamIDs` on connect — added to the list immediately
+- **Total Players Ever:** Counted from valid Steam ID folders in `userdata/`
 - **Session Times:** Calculated from active connection duration
 - **Steam ID Validation:** Ensures accurate player counting with proper format validation
 
@@ -330,7 +342,7 @@ The plugin manages data in `oxide/data/rPop.json`:
 ⭐ First Wipe: Oct 25, 2023 (1y 2m 21d ago)
 🔥 Total Server Wipes: 14
 
-rPop Live Server Statistics V1.0.32 by Ftuoil Xelrash
+rPop Live Server Statistics V1.0.40 by Ftuoil Xelrash
 ```
 
 ## 🕐 Wipe Schedule System
@@ -578,7 +590,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ### Issue Template
 When reporting bugs, please include:
 ```
-**Plugin Version:** 1.0.32
+**Plugin Version:** 1.0.40
 **Umod Version:** [Your Version]
 **Server Population:** [Typical player count]
 **Error Message:** [Full console output]
