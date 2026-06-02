@@ -9,7 +9,7 @@ using Newtonsoft.Json;
 
 namespace Oxide.Plugins
 {
-    [Info("Rust Population Statistics", "Ftuoil Xelrash", "1.0.35")]
+    [Info("Rust Population Statistics", "Ftuoil Xelrash", "1.0.38")]
     [Description("Displays server population statistics and sends performance updates to Discord")]
 
     public class rPop : RustPlugin
@@ -18,6 +18,7 @@ namespace Oxide.Plugins
 
         private ConfigData config;
         private PluginData pluginData;
+        private AllTimeData allTimeData;
         private DateTime lastPopCommandTime = DateTime.MinValue;
         private DateTime lastWipeCommandTime = DateTime.MinValue;
         private bool _wipedThisStartup = false;
@@ -95,6 +96,11 @@ namespace Oxide.Plugins
         {
             [JsonProperty("Count")] public int Count = 0;
             [JsonProperty("Date")] public DateTime Date = DateTime.MinValue;
+        }
+
+        public class AllTimeData
+        {
+            [JsonProperty("All Time Steam IDs")] public HashSet<string> AllTimeSteamIDs = new HashSet<string>();
         }
 
         protected override void LoadDefaultConfig()
@@ -300,7 +306,7 @@ namespace Oxide.Plugins
         {
             try
             {
-                pluginData = Interface.Oxide.DataFileSystem.ReadObject<PluginData>("rPop");
+                pluginData = Interface.Oxide.DataFileSystem.ReadObject<PluginData>("rPop/rPop");
                 if (pluginData == null)
                 {
                     pluginData = new PluginData();
@@ -348,11 +354,53 @@ namespace Oxide.Plugins
         {
             try
             {
-                Interface.Oxide.DataFileSystem.WriteObject("rPop", pluginData);
+                Interface.Oxide.DataFileSystem.WriteObject("rPop/rPop", pluginData);
             }
             catch (Exception ex)
             {
                 PrintError($"Error saving data: {ex.Message}");
+            }
+        }
+
+        private void LoadAllTimeData()
+        {
+            try
+            {
+                allTimeData = Interface.Oxide.DataFileSystem.ReadObject<AllTimeData>("rPop/rPop_alltime");
+                if (allTimeData == null)
+                    allTimeData = new AllTimeData();
+
+                if (allTimeData.AllTimeSteamIDs.Count == 0 && pluginData.WipeSteamIDs.Count > 0)
+                {
+                    foreach (var id in pluginData.WipeSteamIDs)
+                        allTimeData.AllTimeSteamIDs.Add(id);
+                    SaveAllTimeData();
+                    Puts($"All-time player data seeded with {allTimeData.AllTimeSteamIDs.Count} existing wipe players.");
+                }
+                else
+                {
+                    Puts($"All-time player data loaded successfully. ({allTimeData.AllTimeSteamIDs.Count} players)");
+                }
+            }
+            catch (Exception ex)
+            {
+                PrintError($"Error loading all-time data: {ex.Message}");
+                allTimeData = new AllTimeData();
+                foreach (var id in pluginData.WipeSteamIDs)
+                    allTimeData.AllTimeSteamIDs.Add(id);
+                SaveAllTimeData();
+            }
+        }
+
+        private void SaveAllTimeData()
+        {
+            try
+            {
+                Interface.Oxide.DataFileSystem.WriteObject("rPop/rPop_alltime", allTimeData);
+            }
+            catch (Exception ex)
+            {
+                PrintError($"Error saving all-time data: {ex.Message}");
             }
         }
 
@@ -479,14 +527,22 @@ namespace Oxide.Plugins
 
         private void TrackWipePlayer(string steamId)
         {
-            if (string.IsNullOrEmpty(steamId) || pluginData.WipeSteamIDs.Contains(steamId)) return;
+            if (string.IsNullOrEmpty(steamId) || pluginData == null) return;
+            if (pluginData.WipeSteamIDs.Contains(steamId)) return;
+            if (allTimeData == null) LoadAllTimeData();
 
             pluginData.WipeSteamIDs.Add(steamId);
 
-            if (Directory.Exists(Path.Combine("userdata", steamId)))
+            if (allTimeData.AllTimeSteamIDs.Contains(steamId))
+            {
                 pluginData.PlayersReturnedThisWipe++;
+            }
             else
+            {
                 pluginData.PlayersNewThisWipe++;
+                allTimeData.AllTimeSteamIDs.Add(steamId);
+                SaveAllTimeData();
+            }
 
             SaveData();
         }
@@ -755,6 +811,7 @@ namespace Oxide.Plugins
                 Puts("Server marked as ONLINE");
                 
                 LoadData();
+                LoadAllTimeData();
 
                 if (_wipedThisStartup && pluginData.TotalServerWipes > 0)
                 {
@@ -823,11 +880,12 @@ namespace Oxide.Plugins
             performanceTimer?.Destroy();
             inGameMessageTimer?.Destroy();
             SaveData();
+            SaveAllTimeData();
         }
 
         private void OnPlayerConnected(BasePlayer player)
         {
-            if (player?.UserIDString != null && config.Settings.EnablePlayerTabulation)
+            if (player?.UserIDString != null)
                 TrackWipePlayer(player.UserIDString);
 
             timer.Once(1f, () =>
