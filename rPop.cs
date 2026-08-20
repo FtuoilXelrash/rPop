@@ -9,7 +9,7 @@ using Newtonsoft.Json;
 
 namespace Oxide.Plugins
 {
-    [Info("Rust Population Statistics", "Ftuoil Xelrash", "1.0.40")]
+    [Info("Rust Population Statistics", "Ftuoil Xelrash", "1.0.50")]
     [Description("Displays server population statistics and sends performance updates to Discord")]
 
     public class rPop : RustPlugin
@@ -75,6 +75,10 @@ namespace Oxide.Plugins
             [JsonProperty("Show Returning Players This Wipe")] public bool ShowReturningPlayersThisWipe = true;
             [JsonProperty("Show New Players This Wipe")] public bool ShowNewPlayersThisWipe = true;
             [JsonProperty("Enable Player Tabulation")] public bool EnablePlayerTabulation = false;
+
+            [JsonProperty("Show Plugins Loaded")] public bool ShowPluginsLoaded = true;
+            [JsonProperty("Show Plugins Failed To Load")] public bool ShowPluginsFailedToLoad = true;
+            [JsonProperty("Show Oxide Version")] public bool ShowOxideVersion = true;
         }
 
         public class PluginData
@@ -208,7 +212,10 @@ namespace Oxide.Plugins
                        settings.ContainsKey("Show Total Players This Wipe") &&
                        settings.ContainsKey("Show Returning Players This Wipe") &&
                        settings.ContainsKey("Show New Players This Wipe") &&
-                       settings.ContainsKey("Enable Player Tabulation");
+                       settings.ContainsKey("Enable Player Tabulation") &&
+                       settings.ContainsKey("Show Plugins Loaded") &&
+                       settings.ContainsKey("Show Plugins Failed To Load") &&
+                       settings.ContainsKey("Show Oxide Version");
 
                 if (!hasAll)
                 {
@@ -276,6 +283,12 @@ namespace Oxide.Plugins
                         config.Settings.ShowNewPlayersThisWipe = true;
                     if (!settings.ContainsKey("Enable Player Tabulation"))
                         config.Settings.EnablePlayerTabulation = false;
+                    if (!settings.ContainsKey("Show Plugins Loaded"))
+                        config.Settings.ShowPluginsLoaded = true;
+                    if (!settings.ContainsKey("Show Plugins Failed To Load"))
+                        config.Settings.ShowPluginsFailedToLoad = true;
+                    if (!settings.ContainsKey("Show Oxide Version"))
+                        config.Settings.ShowOxideVersion = true;
                 }
 
                 return hasAll;
@@ -595,6 +608,56 @@ namespace Oxide.Plugins
             catch (Exception ex)
             {
                 PrintError($"Error getting server protocol: {ex.Message}");
+                return "Unknown";
+            }
+        }
+
+        private int GetPluginsLoadedCount()
+        {
+            try
+            {
+                return plugins.GetAll().Length;
+            }
+            catch (Exception ex)
+            {
+                PrintError($"Error getting loaded plugin count: {ex.Message}");
+                return 0;
+            }
+        }
+
+        private int GetPluginsFailedToLoadCount()
+        {
+            try
+            {
+                string pluginDir = Interface.Oxide.PluginDirectory;
+                if (string.IsNullOrEmpty(pluginDir) || !Directory.Exists(pluginDir)) return 0;
+
+                var loadedNames = new HashSet<string>(plugins.GetAll().Select(p => p.Name), StringComparer.OrdinalIgnoreCase);
+                int failed = 0;
+                foreach (var file in Directory.GetFiles(pluginDir, "*.cs"))
+                {
+                    if (!loadedNames.Contains(Path.GetFileNameWithoutExtension(file)))
+                        failed++;
+                }
+                return failed;
+            }
+            catch (Exception ex)
+            {
+                PrintError($"Error getting failed plugin count: {ex.Message}");
+                return 0;
+            }
+        }
+
+        private string GetOxideVersion()
+        {
+            try
+            {
+                string location = typeof(Interface).Assembly.Location;
+                return System.Diagnostics.FileVersionInfo.GetVersionInfo(location).FileVersion ?? "Unknown";
+            }
+            catch (Exception ex)
+            {
+                PrintError($"Error getting Oxide version: {ex.Message}");
                 return "Unknown";
             }
         }
@@ -1039,6 +1102,9 @@ namespace Oxide.Plugins
                 string networkIO = GetNetworkIO();
                 string lastBpWipeDate = GetFormattedBlueprintWipeDate();
                 string nextWipeDate = GetFormattedNextWipeDate();
+                int pluginsLoaded = GetPluginsLoadedCount();
+                int pluginsFailedToLoad = GetPluginsFailedToLoadCount();
+                string oxideVersion = GetOxideVersion();
 
                 string message = "";
 
@@ -1118,6 +1184,21 @@ namespace Oxide.Plugins
 
                 if (config.Settings.ShowProtocol)
                     message += $"\n🔗 **Protocol:** `{GetServerProtocol()}`";
+
+                bool showPluginStatus = config.Settings.ShowPluginsLoaded || config.Settings.ShowPluginsFailedToLoad || config.Settings.ShowOxideVersion;
+                if (showPluginStatus)
+                {
+                    message += $"\n\n**🧩 Plugin Status**";
+
+                    if (config.Settings.ShowPluginsLoaded)
+                        message += $"\n🧩 **Plugins Loaded:** `{pluginsLoaded:N0}`";
+
+                    if (config.Settings.ShowPluginsFailedToLoad && (!config.Settings.HideZeroValues || pluginsFailedToLoad > 0))
+                        message += $"\n⚠️ **Plugins Failed to Load:** `{pluginsFailedToLoad:N0}`";
+
+                    if (config.Settings.ShowOxideVersion)
+                        message += $"\n🔧 **Oxide Version:** `{oxideVersion}`";
+                }
 
                 message += $"\n\n**🖥️ Server Data**\n" +
                           $"🕐 **Server Online For:** `{uptime}`";

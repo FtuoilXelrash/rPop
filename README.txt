@@ -40,6 +40,11 @@ WORLD INFORMATION:
 - Server protocol version display
 - Timezone awareness - Automatic server timezone detection
 
+PLUGIN STATUS:
+- Plugins loaded count of currently active plugins
+- Plugins failed to load detection - flags .cs files present but not loaded
+- Oxide version display for troubleshooting/support
+
 DISCORD INTEGRATION:
 - Smart webhook management with message editing (no spam!)
 - Rich embeds with server branding and custom images
@@ -137,6 +142,11 @@ POPULATION DISPLAY:
 - Show Total Players This Wipe: true/false - Display unique players connected since last wipe
 - Show Returning Players This Wipe: true/false - Display count of returning players this wipe
 - Show New Players This Wipe: true/false - Display count of first-time players this wipe
+
+PLUGIN STATUS DISPLAY:
+- Show Plugins Loaded: true/false - Display count of currently loaded plugins
+- Show Plugins Failed To Load: true/false - Display count of .cs files that failed to load
+- Show Oxide Version: true/false - Display the running Oxide framework version
 
 DISCORD INTEGRATION:
 - Discord Webhook URL: "" - Your Discord webhook URL
@@ -396,7 +406,7 @@ real gameplay setting.
 ===============================================================================
 
 WHEN REPORTING BUGS, INCLUDE:
-- Plugin Version: 1.0.40
+- Plugin Version: 1.0.50
 - Umod Version: [Your Version]
 - Server Population: [Typical player count]
 - Error Message: [Full console output]
