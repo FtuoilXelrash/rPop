@@ -2,7 +2,7 @@
 
 ![Rust](https://img.shields.io/badge/Game-Rust-orange)
 ![Umod](https://img.shields.io/badge/Framework-Umod-blue)
-![Version](https://img.shields.io/badge/Version-1.0.55-green)
+![Version](https://img.shields.io/badge/Version-1.0.60-green)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 
 A comprehensive Umod plugin for Rust servers that tracks and reports server performance statistics and population data to Discord in real-time with automatic message editing and instant population updates.
@@ -336,7 +336,7 @@ The plugin manages two data files in `oxide/data/rPop/`:
 
 🌍 World Data
 🕒 In-Game Time: 2:30 PM
-🌍 World Size: 4000
+📐 World Size: 4000
 🌱 Seed: 1234567890
 🏗️ Map Entities: 45,678
 🔗 Protocol: 2436.86.0
@@ -359,7 +359,7 @@ The plugin manages two data files in `oxide/data/rPop/`:
 ⭐ First Wipe: Oct 25, 2023 (1y 2m 21d ago)
 🔥 Total Server Wipes: 14
 
-rPop Live Server Statistics V1.0.55 by Ftuoil Xelrash
+rPop Live Server Statistics V1.0.60 by Ftuoil Xelrash
 ```
 
 ## 🕐 Wipe Schedule System
@@ -607,7 +607,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ### Issue Template
 When reporting bugs, please include:
 ```
-**Plugin Version:** 1.0.55
+**Plugin Version:** 1.0.60
 **Umod Version:** [Your Version]
 **Server Population:** [Typical player count]
 **Error Message:** [Full console output]

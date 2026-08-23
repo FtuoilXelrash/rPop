@@ -9,7 +9,7 @@ using Newtonsoft.Json;
 
 namespace Oxide.Plugins
 {
-    [Info("Rust Population Statistics", "Ftuoil Xelrash", "1.0.55")]
+    [Info("Rust Population Statistics", "Ftuoil Xelrash", "1.0.60")]
     [Description("Displays server population statistics and sends performance updates to Discord")]
 
     public class rPop : RustPlugin
@@ -1186,7 +1186,7 @@ namespace Oxide.Plugins
 
                 message += $"\n\n**🌍 World Data**\n" +
                           $"🕒 **In-Game Time:** `{GetInGameTime()}`\n" +
-                          $"🌍 **World Size:** `{ConVar.Server.worldsize}`\n" +
+                          $"📐 **World Size:** `{ConVar.Server.worldsize}`\n" +
                           $"🌱 **Seed:** `{ConVar.Server.seed}`\n" +
                           $"🏗️ **Map Entities:** `{mapEntities:N0}`";
 
