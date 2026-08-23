@@ -2,7 +2,7 @@
 
 ![Rust](https://img.shields.io/badge/Game-Rust-orange)
 ![Umod](https://img.shields.io/badge/Framework-Umod-blue)
-![Version](https://img.shields.io/badge/Version-1.0.50-green)
+![Version](https://img.shields.io/badge/Version-1.0.55-green)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 
 A comprehensive Umod plugin for Rust servers that tracks and reports server performance statistics and population data to Discord in real-time with automatic message editing and instant population updates.
@@ -44,7 +44,7 @@ A comprehensive Umod plugin for Rust servers that tracks and reports server perf
 - **Server protocol** version display (network.save.report format)
 - **Timezone awareness** - Automatic server timezone detection and display
 
-### 🧩 Plugin Status
+### 🔌 Plugin Status
 - **Plugins loaded** count of currently active plugins
 - **Plugins failed to load** detection - flags `.cs` files present but not loaded (compile errors)
 - **Oxide version** display for troubleshooting/support
@@ -341,7 +341,7 @@ The plugin manages two data files in `oxide/data/rPop/`:
 🏗️ Map Entities: 45,678
 🔗 Protocol: 2436.86.0
 
-🧩 Plugin Status
+🔌 Plugin Status
 🧩 Plugins Loaded: 87
 ⚠️ Plugins Failed to Load: 1
 🔧 Oxide Version: 2.0.6220.0
@@ -359,7 +359,7 @@ The plugin manages two data files in `oxide/data/rPop/`:
 ⭐ First Wipe: Oct 25, 2023 (1y 2m 21d ago)
 🔥 Total Server Wipes: 14
 
-rPop Live Server Statistics V1.0.50 by Ftuoil Xelrash
+rPop Live Server Statistics V1.0.55 by Ftuoil Xelrash
 ```
 
 ## 🕐 Wipe Schedule System
@@ -607,7 +607,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ### Issue Template
 When reporting bugs, please include:
 ```
-**Plugin Version:** 1.0.50
+**Plugin Version:** 1.0.55
 **Umod Version:** [Your Version]
 **Server Population:** [Typical player count]
 **Error Message:** [Full console output]

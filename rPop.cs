@@ -9,7 +9,7 @@ using Newtonsoft.Json;
 
 namespace Oxide.Plugins
 {
-    [Info("Rust Population Statistics", "Ftuoil Xelrash", "1.0.50")]
+    [Info("Rust Population Statistics", "Ftuoil Xelrash", "1.0.55")]
     [Description("Displays server population statistics and sends performance updates to Discord")]
 
     public class rPop : RustPlugin
@@ -616,7 +616,15 @@ namespace Oxide.Plugins
         {
             try
             {
-                return plugins.GetAll().Length;
+                string pluginDir = Interface.Oxide.PluginDirectory;
+                if (string.IsNullOrEmpty(pluginDir) || !Directory.Exists(pluginDir))
+                    return plugins.GetAll().Length;
+
+                var fileNames = new HashSet<string>(
+                    Directory.GetFiles(pluginDir, "*.cs").Select(Path.GetFileNameWithoutExtension),
+                    StringComparer.OrdinalIgnoreCase);
+
+                return plugins.GetAll().Count(p => fileNames.Contains(p.Name));
             }
             catch (Exception ex)
             {
@@ -1188,7 +1196,7 @@ namespace Oxide.Plugins
                 bool showPluginStatus = config.Settings.ShowPluginsLoaded || config.Settings.ShowPluginsFailedToLoad || config.Settings.ShowOxideVersion;
                 if (showPluginStatus)
                 {
-                    message += $"\n\n**🧩 Plugin Status**";
+                    message += $"\n\n**🔌 Plugin Status**";
 
                     if (config.Settings.ShowPluginsLoaded)
                         message += $"\n🧩 **Plugins Loaded:** `{pluginsLoaded:N0}`";
